@@ -1,3 +1,7 @@
+############################################################################################################################
+                                # 1. sun_moon_sgb
+############################################################################################################################
+
 # sun_moon.py MicroPython Port of lunarmath.c
 # Calculate sun and moon rise and set times for any date and location
 
@@ -471,7 +475,7 @@ class RiSet:
 
 
 ############################################################################################################################
-                                # עד כאן sun_moon_sgb
+                                # 2. moonphase_sgb
 ############################################################################################################################
                                 
 
@@ -726,7 +730,7 @@ class MoonPhase:
             # Datetimes in secs since hardware epoch based on UTC
 
 ###################################################################################################################################
-          # עד כאן moonphase_sgb
+                            # 3. mpy_heb_date
 ###################################################################################################################################
 
 import time
@@ -1235,7 +1239,7 @@ def get_is_today_heb_holiday():
 print(get_today_heb_date_string(heb_week_day=True))
 
 ##########################################################################################################################################
-                         # עד כאן mpy_heb_date
+                           # 4 halacha_watch_C
 ##########################################################################################################################################
 
 # ========================================================
@@ -1273,11 +1277,6 @@ from tkinter import messagebox
 
 is_windows = platform.system() == "Windows"
 ####################################################################3
-
-
-# הגדרת הכפתורים הפיזיים במכשיר
-#boot_button = Pin(0, Pin.IN, Pin.PULL_UP) # משמש בקוד לשינוי המיקומים ולקביעת מיקום ברירת מחדל
-
 
 # משתנה למעקב אחר מצב הכוח כלומר האם המכשיר כבוי או פועל
 # המשמעות של זה מגיעה לידי ביטוי בפונקצייה הראשית: main
@@ -1393,22 +1392,6 @@ def calculate_temporal_time(timestamp, sunrise_timestamp, sunset_timestamp):
         temporal_time = f'{zmanit_hour:02.0f}:{zmanit_minute:02.0f}:{zmanit_second:02.0f}'
         
         return temporal_time, seconds_per_temporal_hour_in_day_or_night
-
-
-# פונקצייה לחישוב שעון המגרב או שעון ארץ ישראל כלומר כמה זמן עבר מהשקיעה האחרונה עד הרגע הנוכחי
-# כל הזמנים צריכים להינתן בפורמט חותמת זמן
-# פונקצייה זו יכולה לפעול גם בכל פייתון רגיל היא לגמרי חישובית ולא תלוייה בכלום חוץ מהמשתנים שלה
-# חייבים לתת לה את זמן השקיעה המתאים כלומר השקיעה של היום או לאחר חצות הלילה השקיעה של אתמול הלועזי
-# כרגע פונקצייה זו לא פעילה ויש בה בעיות שונות
-def calculate_magrab_time(current_timestamp, last_sunset_timestamp):
-        
-        # חישוב כמה שניות עברו מאז הזריחה או השקיעה עד הזמן הנוכחי 
-        time_since_last_sunset = current_timestamp - last_sunset_timestamp
-        
-        # הדפסת השעה הזמנית המתאימה בפורמט שעות:דקות:שניות
-        magrab_time = str(convert_seconds(time_since_last_sunset, to_hours=True))
-        
-        return magrab_time
 
 
 ##############################################################################################################        
@@ -1541,19 +1524,6 @@ locations = [
 
 
 
-   
-
-# חישוב מה מרכז המסך כדי למרכז את הטקסט במרכז המסך
-# עדיין יש בעיות קטנות שאולי נגרמות מכך שיש אותיות צרות יותר מ MAX_WIDTH אבל אין מה לעשות כרגע
-# בינתיים זה הכי טוב שהגעתי אליו
-def center(text, font):
-    # הגדרת הפיקסל שבמרכז המסך
-    tft_pixel_center = 160 # tft.width() // 2
-    # הגדרת הפיקסל שבמרכז הטקסט
-    text_pixel_center = len(text) // 2 * font.MAX_WIDTH // 2 # כלומר הרוחב בפיקסלים של חצי מהטקסט
-    return tft_pixel_center - text_pixel_center # זה אומר כמה ימינה ממרכז המסך צריך להתחיל את ההדפסה כדי שמרכז ההדפסה יהיה במרכז המסך
-
-
 #  ההסברים מורכבים משני חלקים כל אחד: הסבר וערך. ההסבר עובר בסוף רוורס ולכן אם יש בו מספרים חייבים לעשות להם רוורס כאן כדי שהרוורס הסופי יישר אותם 
 esberim = [
     
@@ -1563,19 +1533,8 @@ esberim = [
         ["חץ למעלה: חזרה למיקום ברירת מחדל", ""],
         ["שעון ההלכה גרסה",f"{VERSION}"],
         [" מאת: שמחה גרשון בורר - כוכבים וזמנים",""],
-        [reverse("052-7661249 - sgbmzm@gmail.com  "), ""],
+        [reverse("sgbmzm@gmail.com"), ""],
         ["כל הזכויות שמורות - להלן הסברים", ""],
-        ["בתקלה: יש ללחוץ על לחצן האיפוס", ""],
-        ["אחוז הסוללה )בערך(: בשורת הכותרת", ""],
-        ["כשמחובר לחשמל מופיע: %**", ""],
-        ["אור אדום דולק בחור: הסוללה נטענת", ""],
-        ["לחצן תחתון: הדלקה וכיבוי", ""],
-        ["לחצן עליון: ביצוע פעולות כדלהלן", ""],
-        ["לחיצה קצרה: שינוי מיקום", ""],
-        ["לחיצה מתמשכת: הגדרת מיקום קבוע", ""],
-        ["התחלה כשהלחצן לחוץ: עדכון שעון", ""],
-        ["הדלקה בשני הלחצנים: עדכון תוכנה", ""],
-        [" עדכונים דורשים רשת ללא סיסמה", ""],
         [f"כשהשעון מכוון: דיוק הזמנים {reverse('10')} שניות", ""],
         ["אבל: דיוק גובה הירח סוטה בכדקה", ""],
         
@@ -1622,17 +1581,18 @@ esberim = [
 
         
         ["להלן תנאי מינימום לראיית ירח ראשונה", ""],
-        [f"שלב {reverse('4%')}; והפרש גובה שמש-ירח {reverse('8°')}", ""],
+        [f"שלב {reverse('3%')}; והפרש גובה שמש-ירח {reverse('8°')}", ""],
     
     ]  
 
-current_screen_halach_clock = 0.0
 
 # פונקצייה שמחזירה את השעה במיקום שבו נמצאים כרגע כחותמת זמן
-def get_current_location_timestamp():
+def get_current_location_timestamp(manual_time = False):
+    
     # הגדרות מאוד חשובות על איזה זמן יתבצעו החישובים
     # בתחילת הקוד גרמנו שהשעון החיצוני וגם הפנימי מעודכנים בשעה בגריניץ כלומר באיזור זמן UTC-0 . כעת צריך להמיר לשעון מקומי במיקום הנוכחי
     rtc_system_timestamp =  time.time() # או: time.mktime(time.localtime())
+    #rtc_system_timestamp = time.mktime((2025, 6, 12, 3, 12, 45, 0, 0,-1)) # זה לבדיקה בלבד כשרוצים להזין זמן ידני
     current_utc_timestamp =  rtc_system_timestamp # כי בתחילת הקוד גרמנו שהשעון החיצוני יעדכן את השעון הפנימי בשעה באיזור זמן UTC-0
     # בדיקה האם המיקום הנוכחי הוא משווה 00 או הקוטב הצפוני אפס כי שם אני לא רוצה שיהיה שעון קיץ
     is_location_mashve_or_kotev = location["long"] == 0.0 and location["lat"] == 0.0 or location["long"] == 0.0 and location["lat"] == 90.0
@@ -1646,7 +1606,8 @@ def get_current_location_timestamp():
 
 
 ########################################################################################3
-
+# פונקציות לטיפול במיקומים
+# פונקצייה שמחזירה את המיקום במחשב שבו שומרים את הקובץ של מיקום ברירת המחדל
 def get_settings_path():
     
     APP_NAME = "Halacha_watch"
@@ -1660,6 +1621,7 @@ def get_settings_path():
     os.makedirs(config_dir, exist_ok=True)
     return os.path.join(config_dir, "hw_default_location_index.txt")
 
+# פונקצייה לשמירת מיקום ברירת המחדל
 def save_default_location_index(event=None):
     # הכרזה על משתנים גלובליים שיטופלו בלחיצה על הכפתור
     global location_index
@@ -1674,6 +1636,7 @@ def save_default_location_index(event=None):
         except Exception as e:
             messagebox.showinfo("שגיאה", f"{e}")
 
+# פונקצייה לקריאת מיקום ברירת המחדל מתוך הקובץ
 def load_default_location_index():
     path = get_settings_path()
     if os.path.exists(path):
@@ -1681,7 +1644,8 @@ def load_default_location_index():
             return int(f.read())
     else:
         return 0  # ברירת מחדל אם הקובץ לא קיים
-    
+
+# פונקצייה להחלפת מיקום
 def switch_location(event=None):
     global location, location_index
 
@@ -1692,7 +1656,7 @@ def switch_location(event=None):
 
     location = locations[location_index]
     
-# פונקצייה שמחזירה את מיקום ברירת המחדל להיות המיקום הנוכחי
+# פונקצייה שמקפיצה בחזרה את התוכנה להיות על מיקום ברירת המחדל
 def go_to_default_location(event=None):
     # הצהרה על משתנים גלובליים
     global location, location_index
@@ -1703,8 +1667,6 @@ def go_to_default_location(event=None):
     location_index = 0
 
     
-
-
 # הגדרת משתנה גלובלי חשוב מאוד שקובע מה המיקום הנוכחי שעליו מתבצעים החישובים
 # משתנה זה נקבע לפי המיקום האינדקסי ששמור בקובץ מיקום ברירת מחדל תוך בדיקה שהאינדקס לא חורג מגבולות הרשימה ואם כן חורג אז יוגדר המיקום האפס כברירת מחדל
 # קריאת המיקום מתוך הרשימה בהתאם למספר שבקובץ
@@ -1726,14 +1688,15 @@ current_screen_halach_clock = 0.0  #
 # הקמת החלון הגרפי
 
 root_hw = tk.Tk()
-root_hw.attributes('-fullscreen', True)
-root_hw.configure(bg='black')
-root_hw.bind("<Escape>", lambda e: root_hw.destroy())
-root_hw.bind("<Shift-Right>", save_default_location_index)
-root_hw.bind("<Right>", switch_location)
-root_hw.bind("<Left>", switch_location)
-root_hw.bind("<Up>", go_to_default_location)
+root_hw.attributes('-fullscreen', True) # מסך מלא
+root_hw.configure(bg='black') # רקע שחור 
+root_hw.bind("<Escape>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על אסקייפ
+root_hw.bind("<Shift-Right>", save_default_location_index) # שיפט וחץ ימינה שומרים מיקום ברירת מחדל
+root_hw.bind("<Right>", switch_location) # חץ ימינה מחליף מיקום
+root_hw.bind("<Left>", switch_location) # חץ שמאלה מחליף מיקום
+root_hw.bind("<Up>", go_to_default_location) # חץ למעלה מחזיר למיקום ברירת המחדל
 
+# הגדרות החלון
 screen_width = root_hw.winfo_screenwidth()
 screen_height = root_hw.winfo_screenheight()
 base_width = 320
@@ -1792,10 +1755,10 @@ greg_date_id = canvas.create_text(65 * scale, 157 * scale, text="", fill="white"
 
 ######################################################################################################################3
 
-
 # הפונקצייה הראשית שבסוף גם מפעילה את הנתונים על המסך
 def main_halach_clock():
-       
+    
+     
     # קבלת הזמן המקומי למיקום המבוקש כחותמת זמן - באמצעות פונקצייה שהוגדרה לעיל    
     current_location_timestamp, location_offset_hours, location_offset_seconds = get_current_location_timestamp()
     current_timestamp = current_location_timestamp
@@ -1867,7 +1830,7 @@ def main_halach_clock():
     else:
         
         temporal_time = reverse("שגיאה  ")
-        minutes_in_temporal_hour = ""
+        minutes_in_temporal_hour = 0.0
         
     
     
@@ -1884,7 +1847,7 @@ def main_halach_clock():
     else:
         
         mga_temporal_time = reverse("שגיאה  ")
-        minutes_in_mga_temporal_hour = ""
+        minutes_in_mga_temporal_hour = 0.0
 
 
     ###########################################################
@@ -1901,7 +1864,7 @@ def main_halach_clock():
     # אם התאריך העברי מקביל לתאריך הלועזי של מחר כי מדובר אחרי השקיעה ולפני 12 בלילה מחשבים את הנתונים על מחר
     if heb_date_is_next_greg_date:    
         # חישוב התאריך הלועזי של מחר כלומר בדיוק עוד 24 שעות. זה נדרש כי התאריך העברי מהשקיעה עד 12 בלילה שווה לתאריך הלועזי של מחר
-        tomorrow_tm = time.localtime(current_timestamp+86400) # יש 86400 שניות ביממה
+        tomorrow_tm = time.gmtime(current_timestamp+86400) # יש 86400 שניות ביממה
         g_year, g_month, g_day, g_rtc_week_day = (tomorrow_tm[0], tomorrow_tm[1], tomorrow_tm[2], tomorrow_tm[6])
     
     # בכל מקרה אחר התאריך העברי מקביל לתאריך הלועזי הנוכחי
@@ -1948,7 +1911,7 @@ def main_halach_clock():
     heb_date_to_print = f' {leil_string}{reverse(heb_weekday_string)}, {reverse(heb_date_string)}'
     #magrab_time = calculate_magrab_time(current_timestamp, sunset_timestamp) if sunrise else reverse("שגיאה  ") # רק אם יש זריחה ושקיעה אפשר לחשב
     utc_offset_string = 'utc+00' if location_offset_hours == 0 else f'utc+{location_offset_hours:02}' if location_offset_hours >0 else f'utc-{abs(location_offset_hours):02}'
-    coteret = f'  {voltage_string} - {reverse("שעון ההלכה")} - {reverse(location["heb_name"])}'
+    coteret = f'  {voltage_string} - {reverse("שעון ההלכה")} - {reverse(location["heb_name"])}*'
     
     
     # עדכון שורת הכותרת
@@ -1981,7 +1944,7 @@ def main_halach_clock():
     time_value = esberim[int(current_screen_halach_clock)][1]  # הערך להצגה
     CCC = f"{time_value}  :{text}" if time_value != "" else f"{text}"
     canvas.itemconfig(hesberim_id, text=f"{CCC}")
-    current_screen_halach_clock = (current_screen_halach_clock + 0.39) % len(esberim)  # זה גורם מחזור של שניות לאיזה נתונים יוצגו במסך
+    current_screen_halach_clock = (current_screen_halach_clock + 0.3) % len(esberim)  # זה גורם מחזור של שניות לאיזה נתונים יוצגו במסך
     
     
     # עדכון תאריך לועזי שעה רגילה ואיזור זמן
@@ -2003,8 +1966,3 @@ main_halach_clock()
 
 # הפעלת החלון הראשי בקביעות
 root_hw.mainloop()
-
-###################################################################################################################################
-
-###################################################################################################################################
-
