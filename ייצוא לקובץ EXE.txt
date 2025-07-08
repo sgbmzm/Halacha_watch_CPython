@@ -1,4 +1,1 @@
-pyinstaller --noconsole --onefile shemeshC.py
-
-
-pyinstaller --noconsole --onefile --add-data "mtDNA_tool.py;." --add-data "rCRS.txt;." --add-data "RSRS.txt;." shemeshC.py
+pyinstaller --noconsole --onefile --add-data "shemeshC.py;." shemeshC.py
