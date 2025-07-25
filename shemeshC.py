@@ -1252,7 +1252,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "15/7/2025"
+VERSION = "25/7/2025-C"
 
 ######################################################################################################################
 
@@ -1274,6 +1274,10 @@ import gc # חשוב נורא לניקוי הזיכרון
 import tkinter as tk
 from tkinter import font
 from tkinter import messagebox
+
+# לצורך לחיצה מדומה על המקלדת כדי שהמסך לא ייכבה אוטומטית
+from pynput.keyboard import Controller as keyboard_Controller 
+from pynput.keyboard import Key as keyboard_Key
 
 is_windows = platform.system() == "Windows"
 ####################################################################3
@@ -1596,7 +1600,7 @@ def get_current_location_timestamp(manual_time = False):
     # הגדרות מאוד חשובות על איזה זמן יתבצעו החישובים
     # בתחילת הקוד גרמנו שהשעון החיצוני וגם הפנימי מעודכנים בשעה בגריניץ כלומר באיזור זמן UTC-0 . כעת צריך להמיר לשעון מקומי במיקום הנוכחי
     rtc_system_timestamp =  time.time() # או: time.mktime(time.localtime())
-    #rtc_system_timestamp = time.mktime((2025, 6, 12, 3, 12, 45, 0, 0,-1)) # זה לבדיקה בלבד כשרוצים להזין זמן ידני
+    #rtc_system_timestamp = time.mktime((2025, 5, 28, 3, 7, 45, 0, 0,-1)) # זה לבדיקה בלבד כשרוצים להזין זמן ידני
     current_utc_timestamp =  rtc_system_timestamp # כי בתחילת הקוד גרמנו שהשעון החיצוני יעדכן את השעון הפנימי בשעה באיזור זמן UTC-0
     # בדיקה האם המיקום הנוכחי הוא משווה 00 או הקוטב הצפוני אפס כי שם אני לא רוצה שיהיה שעון קיץ
     is_location_mashve_or_kotev = location["long"] == 0.0 and location["lat"] == 0.0 or location["long"] == 0.0 and location["lat"] == 90.0
@@ -1652,14 +1656,15 @@ def load_default_location_index():
 # פונקצייה להחלפת מיקום
 def switch_location(event=None):
     global location, location_index
-
-    if event.keysym == "Right":
+    # event.keysym מיועד לאירועי מקלדת event.num מיועד לאירועי עכבר ו event.delta מיועד לגלילת עכבר בווינדוס
+    if event.keysym == "Right" or event.num in [3,4] or event.delta > 0: 
         location_index = (location_index + 1) % len(locations)
-    elif event.keysym == "Left":
+    elif event.keysym == "left" or event.num in [1,5] or event.delta < 0:
         location_index = (location_index - 1) % len(locations)
 
     location = locations[location_index]
     
+
 # פונקצייה שמקפיצה בחזרה את התוכנה להיות על מיקום ברירת המחדל
 def go_to_default_location(event=None):
     # הצהרה על משתנים גלובליים
@@ -1686,6 +1691,8 @@ location_index = 0
 # משתנה לשליטה על איזה נתונים יוצגו בהסברים במסך של שעון ההלכה בכל שנייה
 current_screen_halach_clock = 0.0  # 
 
+# מונה לדעת מתי ללחוץ לחיצה ווירטואלית על שיפט כדי למנוע כיבוי מסך
+counter_shift = 0.0
 
 ###########################################################################################################3
 
@@ -1694,12 +1701,29 @@ current_screen_halach_clock = 0.0  #
 root_hw = tk.Tk()
 root_hw.attributes('-fullscreen', True) # מסך מלא
 root_hw.configure(bg='black') # רקע שחור 
+
 root_hw.bind("<Escape>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על אסקייפ
+root_hw.bind("<Button-2>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על לחצן אמצעי בעכבר
+
 root_hw.bind("<Shift-Right>", save_default_location_index) # שיפט וחץ ימינה שומרים מיקום ברירת מחדל
+
 root_hw.bind("<Right>", switch_location) # חץ ימינה מחליף מיקום
 root_hw.bind("<Left>", switch_location) # חץ שמאלה מחליף מיקום
 root_hw.bind("<Up>", go_to_default_location) # חץ למעלה מחזיר למיקום ברירת המחדל
 
+#root_hw.bind("<Button-1>", switch_location) # לחצן שמאלי בעכבר מחליף מיקום
+#root_hw.bind("<Button-3>", switch_location) # לחצן ימני בעכבר מחליף מיקום
+
+# תמיכה גם בלינוקס וגם בווינדוס בגלילת העכבר
+root_hw.bind("<MouseWheel>", switch_location)      # Windows scroll up & down
+root_hw.bind("<Button-4>", switch_location)        # Linux scroll up
+root_hw.bind("<Button-5>", switch_location)        # Linux scroll down
+
+# עושה שלא יראו את העכבר על המסך של שעון ההלכה
+root_hw.config(cursor="none")
+
+'''
+# כבר אין צורך בזה כי עברתי לשיטה טובה יותר וזה נשאר רק לזיכרון
 if is_windows:
     ######################################################################################
     import ctypes
@@ -1708,6 +1732,7 @@ if is_windows:
     ES_DISPLAY_REQUIRED = 0x00000002 # אומר: שמור על המסך פעיל – אל תכבה אותו
     ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED)
     ######################################################################################
+'''
 
 # הגדרות החלון
 # רזולוציית המסך שבשימוש כרגע
@@ -1731,7 +1756,7 @@ canvas.pack()
 hw_green = "lime"
 
 # איזור כותרת
-title_id = canvas.create_text(160 * scale, 10 * scale, text="", fill=hw_green, font=scaled_font("miriam", 12, "bold"))
+title_id = canvas.create_text(160 * scale, 12 * scale, text="", fill=hw_green, font=scaled_font("miriam", 12, "bold"))
 
 # איזור תאריך עברי
 heb_date_rect_id = canvas.create_rectangle(0, 20 * scale, screen_width, 40 * scale, fill="black")
@@ -1755,19 +1780,20 @@ sun_alt_id = canvas.create_text(210 * scale, 102 * scale, text="", fill=hw_green
 
 canvas.create_text(120 * scale, 90 * scale, text=reverse("ירח"), fill="white", font=scaled_font("miriam", 13))
 moon_az_id = canvas.create_text(120 * scale, 108 * scale, text="", fill="turquoise", font=scaled_font("miriam", 13))
-moon_alt_id = canvas.create_text(53 * scale, 92 * scale, text="", fill=hw_green, font=scaled_font("miriam", 20, "bold"))
-moon_phase_id = canvas.create_text(53 * scale, 110 * scale, text="", fill="turquoise", font=scaled_font("miriam", 15, "bold"))
+moon_alt_id = canvas.create_text(53 * scale, 93 * scale, text="", fill=hw_green, font=scaled_font("miriam", 18, "bold"))
+moon_phase_id = canvas.create_text(45 * scale, 111 * scale, text="", fill="turquoise", font=scaled_font("miriam", 15, "bold"))
 canvas.create_line(0, 120 * scale, screen_width, 120 * scale, fill="yellow")
 
 # איזור הסברים מתחלף
-hesberim_id = canvas.create_text(160 * scale, 132 * scale, text="", fill="white", font=scaled_font("miriam", 15))
-canvas.create_line(0, 145 * scale, screen_width, 145 * scale, fill="yellow")
+hesberim_id = canvas.create_text(160 * scale, 132 * scale, text="", fill="white", font=scaled_font("miriam", 14))
+canvas.create_line(0, 143 * scale, screen_width, 143 * scale, fill="yellow")
 
 # איזור שעון רגיל ותאריך לועזי ואיזור הזמן
 utc_offset_id = canvas.create_text(270 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
 time_id = canvas.create_text(180 * scale, 157 * scale, text="", fill=hw_green, font=scaled_font("miriam", 20, "bold"))
 greg_date_id = canvas.create_text(65 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
-
+#canvas.create_line(0, 166 * scale, screen_width, 166 * scale, fill="yellow")
+#sgb_id = canvas.create_text(160 * scale, 174 * scale, text=reverse('לעילוי נשמת מורנו הרב ד"ר מרדכי בורר זצ"ל הי"ד'), fill="magenta", font=scaled_font("miriam", 10))
 
 ######################################################################################################################3
 
@@ -1913,10 +1939,6 @@ def main_halach_clock():
     sunset_until_motsaei_shabat_luchot = sunset and current_timestamp > sunset and s_alt > -8.5
     is_tosafot_leshabat = (normal_weekday == 6 and half_hour_before_sunset_until_sunset) or (normal_weekday == 7 and sunset_until_motsaei_shabat_luchot)
     
-    
-    # הגדרת ביטול כיבוי אוטומטי בשבת וחג. וכן מחצי שעה לפני השקיעה בשבת ועד מוצאי שבת שבלוחות
-    global automatic_deepsleep
-    automatic_deepsleep = False if is_shabat or is_tosafot_leshabat or holiday_name else True
     ##############################################################################
       
     # מכאן והלאה ההדפסות למסך
@@ -1978,7 +2000,21 @@ def main_halach_clock():
     canvas.itemconfig(greg_date_id, text=greg_date_string)
     
     gc.collect() # ניקוי הזיכרון חשוב נורא כדי למנוע קריסות
-           
+    
+    ####################################################################
+    # כשהמונה מגיע ל- 45 מדמים לחיצה על מקש שיפט במקלדת כדי למנוע כיבוי אוטומטי  
+    global counter_shift
+    if counter_shift >= 45:
+        #print("counter_shift_press")
+        keyboard = keyboard_Controller()
+        keyboard.press(keyboard_Key.shift)
+        keyboard.release(keyboard_Key.shift)
+        counter_shift = 0.0 # איפוס המונה
+    
+    counter_shift += 1 # בכל שנייה המונה מתקדם באחד
+    
+    ####################################################################
+               
     # חזרה על העדכון כל שנייה מחדש
     root_hw.after(1000, main_halach_clock)
     
@@ -1997,4 +2033,3 @@ if not is_miriam:
 
 # הפעלת החלון הראשי בקביעות
 root_hw.mainloop()
-
