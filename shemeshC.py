@@ -1205,7 +1205,7 @@ def get_heb_date_and_holiday_from_greg_date(greg_year, greg_month, greg_day):
     heb_day_string = heb_month_day_names(heb_day_int)
     heb_month_string = heb_month_names(heb_month_int, is_leap_year)
     heb_year_string = _num_to_str(heb_year_int, thousands=True, withgershayim=False)   
-    heb_date_string = f'{heb_day_string} {heb_month_string} {heb_year_string}'
+    heb_date_string = f"{heb_day_string}' {heb_month_string} {heb_year_string}"
     
     tuple_heb_date = (heb_day_int, heb_month_int, heb_year_int)
     
@@ -1252,7 +1252,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "27/7/2025-C"
+VERSION = "25/7/2025-C"
 
 ######################################################################################################################
 
@@ -1534,7 +1534,9 @@ locations = [
 esberim = [
     
         ["ליציאה לחצו במקלדת על",f"Esc"],
+        ["או לחצו בעכבר על לחצן אמצעי",""],
         ["מעבר בין מיקומים בחיצים ימין ושמאל", ""],
+        ["או באמצעות גלילה בעכבר", ""],
         ["שיפט+חץ ימין: קביעת מיקום ברירת מחדל", ""],
         ["חץ למעלה: חזרה למיקום ברירת מחדל", ""],
         
@@ -1600,7 +1602,7 @@ def get_current_location_timestamp(manual_time = False):
     # הגדרות מאוד חשובות על איזה זמן יתבצעו החישובים
     # בתחילת הקוד גרמנו שהשעון החיצוני וגם הפנימי מעודכנים בשעה בגריניץ כלומר באיזור זמן UTC-0 . כעת צריך להמיר לשעון מקומי במיקום הנוכחי
     rtc_system_timestamp =  time.time() # או: time.mktime(time.localtime())
-    #rtc_system_timestamp = time.mktime((2025, 5, 28, 3, 7, 45, 0, 0,-1)) # זה לבדיקה בלבד כשרוצים להזין זמן ידני
+    #rtc_system_timestamp = time.mktime((2025, 7, 25, 20, 5, 45, 0, 0,-1)) # זה לבדיקה בלבד כשרוצים להזין זמן ידני
     current_utc_timestamp =  rtc_system_timestamp # כי בתחילת הקוד גרמנו שהשעון החיצוני יעדכן את השעון הפנימי בשעה באיזור זמן UTC-0
     # בדיקה האם המיקום הנוכחי הוא משווה 00 או הקוטב הצפוני אפס כי שם אני לא רוצה שיהיה שעון קיץ
     is_location_mashve_or_kotev = location["long"] == 0.0 and location["lat"] == 0.0 or location["long"] == 0.0 and location["lat"] == 90.0
@@ -1759,7 +1761,7 @@ hw_green = "lime"
 title_id = canvas.create_text(160 * scale, 12 * scale, text="", fill=hw_green, font=scaled_font("miriam", 12, "bold"))
 
 # איזור תאריך עברי
-heb_date_rect_id = canvas.create_rectangle(0, 20 * scale, screen_width, 40 * scale, fill="black")
+heb_date_rect_id = canvas.create_rectangle(0, 21 * scale, screen_width, 38 * scale, fill="black")
 heb_date_id = canvas.create_text(160 * scale, 30 * scale, text="", fill="white", font=scaled_font("miriam", 14, "bold"))
 canvas.create_line(0, 45 * scale, screen_width, 45 * scale, fill="yellow")
 
@@ -1822,7 +1824,7 @@ def main_halach_clock():
     RiSet.tim = round(current_timestamp) ############### אם לא מגדירים את זה אז הזמן הוא לפי הזמן הפנימי של הבקר
     #RiSet.sinho_sun_riset = 0.0 # אם רוצים שזריחה ושקיעה של השמש יהיו לפי זריחה ושקיעה גיאומטריים ולא לפי מינוס 0.833. אם לא מגדירים אז כברירת מחדל יהיה 0.833 מינוס
     riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, tl=MGA_deg) # lto=location_offset_hours
-
+    
     ############# חישוב גובה ואזימוט של השמש והירח ברגע הנוכחי ###########
     ####### חובה לעשות את זה כאן כאשר ריסט מוגדר עדיין על היון הנוכחי כי בשלב הבא לפעמים מגדירים את ריסט על היום הבא או הקודם ######
     
@@ -1843,7 +1845,7 @@ def main_halach_clock():
     m_alt = m_alt - 0.45
 
     ########## חישובי זריחות ושקיעות היום וגם אתמול או מחר הדרושים לחישוב שעון שעה זמנית #############
-    
+      
     # שמירת כל הנתונים על היום הנוכחי כי כולם נוצרים ביחד בעת הגדרת "riset" או בעת שמשנים לו יום
     sunrise, sunset, mga_sunrise, mga_sunset = riset.sunrise(1), riset.sunset(1), riset.tstart(1), riset.tend(1)
     
@@ -1866,6 +1868,7 @@ def main_halach_clock():
     #print("mga_sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunrise)))
     #print("mga_sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunset)))
     
+       
     ################## חישוב השעה הזמנית הנוכחית גרא ומגא  ##################
    
     # כל החישובים נעשים רק אם יש זריחה ושקיעה ביממה זו במיקום זה והזריחה היא לפני השקיעה. כי אולי במיקום הזה אין בכלל זריחה ושקיעה ביום זה
@@ -1904,7 +1907,7 @@ def main_halach_clock():
     ###################### חישוב שלב הירח הנוכחי #####################
     
     MoonPhase.tim = round(current_timestamp) ############### אם לא מגדירים את זה אז הזמן הוא לפי הזמן הפנימי של הבקר
-    mp = MoonPhase(lto=location_offset_hours)  # כולל הגדרת ההפרש מגריניץ במיקום הנוכחי
+    mp = MoonPhase()  # במיקרופייתון צריך לעשות mp = MoonPhase(lto=location_offset_hours) אך בפייתון רגיל צריך לעשות בלי lto כדי שיהיה מדוייק בדומה לסקייפילד ואינני יודע כעת מדוע
     phase = mp.phase()
     phase_percent = round(phase * 100,1)
                       
@@ -1955,13 +1958,16 @@ def main_halach_clock():
     # מהשקיעה עד 12 בלילה מוסיפים את המילה ליל כי היום בשבוע והתאריך העברי מקבלים לתאריך הלועזי של מחר
     leil_string = reverse("ליל: ") if heb_date_is_next_greg_date else ""
     # אם אין שעון והוגדר זמן שרירותי או שהשעה נלקחה מהשעון הפנימי שכנראה אינו מדוייק מוסיפים סימני קריאה אחרי התאריך העברי
-    heb_date_to_print = f' {leil_string}{reverse(heb_weekday_string)}, {reverse(heb_date_string)}'
+    heb_date_to_print = f'{leil_string}{reverse(heb_weekday_string)}, {reverse(heb_date_string)}'
     # בלינוקס צריך לשנות את הסדר בגלל בעיית תצוגת עברית
     if not is_windows:
         heb_date_to_print = f'{reverse(heb_date_string)} ,{reverse(heb_weekday_string)}{leil_string}'
     #magrab_time = calculate_magrab_time(current_timestamp, sunset_timestamp) if sunrise else reverse("שגיאה  ") # רק אם יש זריחה ושקיעה אפשר לחשב
     utc_offset_string = 'utc+00' if location_offset_hours == 0 else f'utc+{location_offset_hours:02}' if location_offset_hours >0 else f'utc-{abs(location_offset_hours):02}'
-    coteret = f'  {voltage_string} - {reverse("שעון ההלכה")} - {reverse(location["heb_name"])}*'
+    coteret = f'{voltage_string} - {reverse("שעון ההלכה")} - {reverse(location["heb_name"])}*'
+    # בלינוקס צריך לשנות את הסדר בגלל בעיית תצוגת עברית
+    if not is_windows:
+        coteret = f'{voltage_string} - {reverse(location["heb_name"])} - {reverse("שעון ההלכה")}*'
     
     
     # עדכון שורת הכותרת
@@ -1971,6 +1977,29 @@ def main_halach_clock():
     
     # איזור תאריך עברי כולל צבע מתאים לימי חול ולשבתות וחגים
     # צבע הטקסט והרקע של התאריך העברי: ביום חול לבן על שחור ובשבת וחג שחור על צהוב, ובחגים דרבנן כולל תעניות שחור על ציאן
+    
+    #################################################################################
+    # איזור לטיפול בכך שהרקע הצבעוני שתחת התאריך העברי יהיה רק תחתיו ולא בכל השורה
+    
+    # קבלת טקסט עם הנתונים על הפונט שהוגדר לאיזור התאריך העברי והפרדתו למערך של שלושה נתונים
+    heb_date_font_tuple = canvas.itemcget(heb_date_id, "font").split()
+    # הפרדת שלושת הנתונים
+    font_family, font_size, font_weight = heb_date_font_tuple
+    # בניית אובייקט פונט של טקינטר מתוך מערך שלושת הנתונים
+    heb_date_font = font.Font(family=font_family, size=int(font_size), weight=font_weight)   
+    # מדידת אורך הטקסט של התאריך העברי בהתאם לפונט שבו השתמשנו לכתוב אותו
+    text_width = heb_date_font.measure(heb_date_to_print)
+    y1 = 21 * scale # גובה התחלת הרקע מראש המסך
+    y2 = 38 * scale # גובה סיום הרקע מראש המסך
+    center_x = 160 * scale # מרכז המסך מימין לשמאל
+    padding = 30 # שוליים נוספים מעבר לטסקט אם רוצים שהרקע יחרוג קצת. לא הכרחי אפשר לעשות 0
+    x1 = center_x - (text_width / 2) - padding # מרחק תחילת הטקסט ממרכז המסך
+    x2 = center_x + (text_width / 2) + padding # מרחק סוף הטקסט ממרכז המסך
+    canvas.coords(heb_date_rect_id, x1, y1, x2, y2) # עדכון הרקע כך שיהיה רק בגבולות של הטקסט
+
+    ####################################################################
+    
+
     HEB_DATE_FG, HEB_DATE_BG  = ("black", "yellow") if is_shabat or holiday_name else ("black", "cyan") if lite_holiday_name or is_rosh_chodesh else ("white", "black")
     canvas.itemconfig(heb_date_rect_id, fill=HEB_DATE_BG)
     canvas.itemconfig(heb_date_id, text=heb_date_to_print, fill=HEB_DATE_FG)
