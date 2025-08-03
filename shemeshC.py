@@ -2114,7 +2114,7 @@ def main_halach_clock():
 
     zmanim = [
         
-        ["עלות השחר (מינוס 16)", hhh(mga_sunrise, seconds_day_mga, hour=0)],
+        ["עלות השחר 16", hhh(mga_sunrise, seconds_day_mga, hour=0)],
         ["זריחה", hhh(sunrise, seconds_day_mga, hour=0)],
         ["סוף שמע מגא", hhh(mga_sunrise, seconds_day_mga, hour=3)],
         ["סוף שמע גרא", hhh(sunrise, seconds_day_gra, hour=3)],
@@ -2125,7 +2125,7 @@ def main_halach_clock():
         ["מנחה קטנה", hhh(sunrise, seconds_day_gra, hour=9.5)],
         ["פלג המנחה", hhh(sunrise, seconds_day_gra, hour=10.75)],
         ["שקיעה", hhh(sunrise, seconds_day_gra, hour=12)],
-        ["צאת הכוכבים דרבינו תם (מינוס 16)", hhh(mga_sunrise, seconds_day_mga, hour=12)],
+        ["צאת הכוכבים דרבינו תם 16", hhh(mga_sunrise, seconds_day_mga, hour=12)],
     ]
 
     global current_screen_zmanim
@@ -2148,7 +2148,7 @@ def main_halach_clock():
         if is_windows:
             lines.append(f'{label}: {time_val}')
         else:
-            lines.append(f'{time_val}: {label}')
+            lines.append(f'{time_val} :{label}')
 
     SSS = '   |   '.join(lines)
     canvas.itemconfig(zmanim_id, text=SSS)
