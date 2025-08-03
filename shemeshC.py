@@ -2114,7 +2114,7 @@ def main_halach_clock():
 
     zmanim = [
         
-        [f"עלות השחר {reverse(16)}", hhh(mga_sunrise, seconds_day_mga, hour=0)],
+        [f"עלות השחר {reverse('(16)')}", hhh(mga_sunrise, seconds_day_mga, hour=0)],
         ["זריחה", hhh(sunrise, seconds_day_mga, hour=0)],
         ["סוף שמע מגא", hhh(mga_sunrise, seconds_day_mga, hour=3)],
         ["סוף שמע גרא", hhh(sunrise, seconds_day_gra, hour=3)],
@@ -2125,7 +2125,7 @@ def main_halach_clock():
         ["מנחה קטנה", hhh(sunrise, seconds_day_gra, hour=9.5)],
         ["פלג המנחה", hhh(sunrise, seconds_day_gra, hour=10.75)],
         ["שקיעה", hhh(sunrise, seconds_day_gra, hour=12)],
-        [f"צאת הכוכבים דרבינו תם {reverse(16)}", hhh(mga_sunrise, seconds_day_mga, hour=12)],
+        [f"צאת הכוכבים דרבינו תם {reverse('(16)')}", hhh(mga_sunrise, seconds_day_mga, hour=12)],
     ]
 
     global current_screen_zmanim
