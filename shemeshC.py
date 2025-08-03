@@ -112,6 +112,7 @@ def minisun(t):
     # takes t centuries since J2000.0. Claimed good to 1 arcmin
     coseps = 0.9174805004
     sineps = 0.397780757938
+    e = 0.0167  # אקסצנטריות מסלול הארץ סביב השמש ###########
 
     m = 2 * pi * frac(0.993133 + 99.997361 * t)
     dl = 6893.0 * sin(m) + 72.0 * sin(2 * m)
@@ -123,7 +124,15 @@ def minisun(t):
     # rho = sqrt(1 - z * z)
     # dec = (360.0 / 2 * pi) * atan(z / rho)
     # ra = ((48.0 / (2 * pi)) * atan(y / (x + rho))) % 24
-    return x, y, z
+    
+    ############
+    #distance_km = 149597870.7  # יחידה אסטרונומית אחת (AU) מרחק ממוצע בלבד
+    # חישוב מרחק מהשמש לפי חוק קפלר
+    distance_AU = (1 - e**2) / (1 + e * cos(m))
+    distance_km = distance_AU * 149597870.7
+    ############
+    
+    return x, y, z, distance_km ################## המרחק זו תוספת שלי
 
 
 def minimoon(t):
@@ -181,7 +190,54 @@ def minimoon(t):
     # rho = sqrt(1.0 - z * z)
     # dec = (360.0 / 2 * pi) * atan(z / rho)
     # ra = ((48.0 / (2 * pi)) * atan(y / (x + rho))) % 24
-    return x, y, z
+    
+    
+    #########################
+    # מרחק גאוצנטרי של הירח (בערך בקילומטרים)
+    # הערכה פשוטה לפי הפרש באורך בין ירח ופריהליון
+    # אפשרות מדויקת יותר: הוקטור עצמו *יחסי*, נחשב Δ לפי נורמה
+    #distance_km = 385000.56 + dl  # קירוב, אפשר לשפר
+    distance_km = sqrt(x**2 + y**2 + z**2) * 384400  # כפל ביחידה ממוצעת בק"מ
+    #######################
+    
+    return x, y, z, distance_km  ################## המרחק זו תוספת שלי
+
+
+###########################################################3
+
+# פונקצייה מאוד חשובה מאת צ'אט גיפיטי להמרת קואורטינדות של גרם שמיימי מגאוצנטרי לטופוצנטרי כלומר ממיקום הצופה
+def topocentric(x_geocentric, y_geocentric, z_geocentric, distance_km, lat_deg, lon_deg, lst_deg):
+    
+    # קבועים
+    Re_km = 6378.137  # רדיוס כדור הארץ באקווטור בק"מ
+
+    # המר לחישובים
+    φ = radians(lat_deg)
+    H = radians(lst_deg)  # זמן סידריאלי מקומי – זווית השעה
+
+    # מיקום הצופה (יחידות רדיוס ארצי)
+    x_obs = cos(φ) * cos(H)
+    y_obs = cos(φ) * sin(H)
+    z_obs = sin(φ)
+
+    # המרחק לגוף השמימי ביחידות רדיוס ארצי
+    rho = distance_km / Re_km
+
+    # הפרש וקטור בין צופה לגוף השמימי
+    xt = x_geocentric * rho - x_obs
+    yt = y_geocentric * rho - y_obs
+    zt = z_geocentric * rho - z_obs
+
+    # נורמליזציה לווקטור יחידה
+    r = sqrt(xt**2 + yt**2 + zt**2)
+    
+    x_topocentric = xt / r
+    y_topocentric = yt / r
+    z_topocentric = zt / r
+    
+    return x_topocentric, y_topocentric, z_topocentric
+
+#############################################################
 
 
 class RiSet:
@@ -374,7 +430,7 @@ class RiSet:
         mjd = (self.mjd - 51544.5) + hour / 24.0
         # mjd = self.mjd + hour / 24.0
         t = mjd / 36525.0
-        x, y, z = func(t)
+        x, y, z, distance_km = func(t) ################# הוספתי את distance_km
         tl = self.lstt(t, hour) + self.long  # Local mean sidereal time adjusted for logitude
         return self.sglat * z + self.cglat * (x * cos(radians(tl)) + y * sin(radians(tl)))
     
@@ -382,6 +438,7 @@ class RiSet:
 
     ######################################################################################################3
     #######################################################################################################
+
 
     # פונקצייה שבניתי על בסיס הפונקצייה הקודמת ביחד עם בינה מלאכותית ודוגמאות מספריית אסטרל
     # הפונקצייה מחזירה גובה השמש או הירח במעלות, אזימוט מהצפון במעלות, עלייה ישרה בשעות (עשרוני-ללא דקות ושניות), דקלינציה במעלות
@@ -393,26 +450,32 @@ class RiSet:
         func = minisun if sun else minimoon
         mjd = (self.mjd - 51544.5) + hour / 24.0
         t = mjd / 36525.0
-        x, y, z = func(t)  # קואורדינטות קרטזיות של השמש או הירח
+        tl = self.lstt(t, hour) + self.long  # זמן כוכבי מקומי במעלות
+        
+        # זה מחזיר את מיקום הגוף השמיימי מנקודת מבט גיאוצנטרית כלומר ממרכז כדור הארץ
+        xg, yg, zg, distance_km = func(t)
+        
+        # זה ממיר לטופוצנטרי לצורך חישוב עתידי מדוייק יותר של גובה
+        xt, yt, zt = topocentric(xg, yg, zg, distance_km, self.lat, self.long, tl)
 
-        tl = self.lstt(t, hour) + self.long  # זמן כוכבי מקומי
-        sin_alt = self.sglat * z + self.cglat * (x * cos(radians(tl)) + y * sin(radians(tl)))
+        # חישוב גובה מהאופק על מיקום טופוצנטרי של הצופה
+        sin_alt = self.sglat * zt + self.cglat * (xt * cos(radians(tl)) + yt * sin(radians(tl)))
         alt = degrees(asin(sin_alt))  # גובה השמש במעלות
         
-        # חישוב נטייה במעלות
-        rho = sqrt(x * x + y * y)  # היטל של הווקטור על מישור XY
-        dec = degrees(atan2(z, rho))  # חישוב נטייה במעלות
+        # חישוב נטייה כלומר דקלינציה וזה דווקא על מיקום גיאוצנטרי ממרכז כדור הארץ
+        rho = sqrt(xg * xg + yg * yg)  # היטל של הווקטור על מישור XY
+        dec = degrees(atan2(zg, rho))  # חישוב נטייה במעלות
         
-        # חישוב עלייה ישרה (RA)
+        # חישוב עלייה ישרה (RA) וזה דווקא גיאוצנטרי ממרכז כדור הארץ
         # בתאריך 14.3.25 בשעה 21:11:00 utc+2 במודיעין עילית קיבלתי שגיאת חלוקה באפס
         # השגיאה מגיעה מ x + rho ולהלן הפתרון שצ'אט גיפיטי הציע
-        ra_base = x + rho
+        ra_base = xg + rho
         epsilon = 1e-9  # ערך קטן מאוד שקרוב מאוד ל 0.00000 אבל הוא לא אפס מוחלט וזאת כדי למנוע שגיאת חלוקה באפס 
         if abs(ra_base) < epsilon:  
             ra_base = epsilon  # לשמור על דיוק גבוה אבל למנוע בעיה
-        ra = ((48.0 / (2 * pi)) * atan(y / ra_base)) % 24 # עלייה ישרה בשעות כשבר עשרוני
+        ra = ((48.0 / (2 * pi)) * atan(yg / ra_base)) % 24 # עלייה ישרה בשעות כשבר עשרוני
 
-        # חישוב האזימוט (Az)
+        # חישוב האזימוט (Az) מתוך העלייה הישרה
         hourangle = radians(tl) - radians(ra * 15)  # זמן הכוכבים המקומי פחות העלייה הישרה של הכוכב זה זוית השעה שלו (ra * 15 מחזיר למעלות)
         hourangle_hours = (degrees(hourangle) % 360)  / 15.0 # זווית השעה בשעות כשבר עשרוני
         
@@ -423,9 +486,9 @@ class RiSet:
         sl = self.sglat # ==sin(radians(lat))
         cl = self.cglat # ==cos(radians(lat))
 
-        x = -ch * cd * sl + sd * cl
-        y = -sh * cd
-        az = degrees(atan2(y, x)) % 360  # אזימוט במעלות
+        x_az = -ch * cd * sl + sd * cl
+        y_az = -sh * cd
+        az = degrees(atan2(y_az, x_az)) % 360  # אזימוט במעלות
         
         return alt, az, ra, dec
 
@@ -1252,7 +1315,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "25/7/2025-C"
+VERSION = "3/8/2025-C"
 
 ######################################################################################################################
 
@@ -1546,7 +1609,6 @@ esberim = [
         ["כל הזכויות שמורות - להלן הסברים", ""],
         
         [f"כשהשעון מכוון: דיוק הזמנים {reverse('10')} שניות", ""],
-        ["אבל: דיוק גובה הירח סוטה בכדקה", ""],
         
         [" התאריך העברי מתחלף בשקיעה", ""],
         
@@ -1593,8 +1655,7 @@ esberim = [
         ["להלן תנאי מינימום לראיית ירח ראשונה", ""],
         [f"שלב {reverse('3%')}; והפרש גובה שמש-ירח {reverse('8°')}", ""],
     
-    ]  
-
+    ]
 
 # פונקצייה שמחזירה את השעה במיקום שבו נמצאים כרגע כחותמת זמן
 def get_current_location_timestamp(manual_time = False):
@@ -1691,7 +1752,10 @@ location_index = 0
 
 
 # משתנה לשליטה על איזה נתונים יוצגו בהסברים במסך של שעון ההלכה בכל שנייה
-current_screen_halach_clock = 0.0  # 
+current_screen_halach_clock = 0.0  #
+
+# משתנה לשליטה אלו נתונים יוצגו בשורת הזמנים 
+current_screen_zmanim = 0
 
 # מונה לדעת מתי ללחוץ לחיצה ווירטואלית על שיפט כדי למנוע כיבוי מסך
 counter_shift = 0.0
@@ -1794,8 +1858,8 @@ canvas.create_line(0, 143 * scale, screen_width, 143 * scale, fill="yellow")
 utc_offset_id = canvas.create_text(270 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
 time_id = canvas.create_text(180 * scale, 157 * scale, text="", fill=hw_green, font=scaled_font("miriam", 20, "bold"))
 greg_date_id = canvas.create_text(65 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
-#canvas.create_line(0, 166 * scale, screen_width, 166 * scale, fill="yellow")
-#sgb_id = canvas.create_text(160 * scale, 174 * scale, text=reverse('לעילוי נשמת מורנו הרב ד"ר מרדכי בורר זצ"ל הי"ד'), fill="magenta", font=scaled_font("miriam", 10))
+canvas.create_line(0, 166 * scale, screen_width, 166 * scale, fill="yellow")
+sgb_id = canvas.create_text(160 * scale, 174 * scale, text=reverse('לעילוי נשמת מורנו הרב ד"ר מרדכי בורר זצ"ל הי"ד'), fill="magenta", font=scaled_font("miriam", 10))
 
 ######################################################################################################################3
 
@@ -1840,10 +1904,6 @@ def main_halach_clock():
     s_alt, s_az, s_ra, s_dec = riset.alt_az_ra_dec(current_hour, sun=True)
     m_alt, m_az, m_ra, m_dec = riset.alt_az_ra_dec(current_hour, sun=False)
     
-    # תיקון גובה הירח כדי שיתאים למה שיש בכוכבים וזמנים. נדרש כנראה בגלל באג בספריית חישובי השמש והירח. למעקב
-    # אולי במקור היה צריך להיות פחות 0.833 אבל למעשה יותר מדוייק 0.808
-    m_alt = m_alt - 0.45
-
     ########## חישובי זריחות ושקיעות היום וגם אתמול או מחר הדרושים לחישוב שעון שעה זמנית #############
       
     # שמירת כל הנתונים על היום הנוכחי כי כולם נוצרים ביחד בעת הגדרת "riset" או בעת שמשנים לו יום
@@ -2026,6 +2086,73 @@ def main_halach_clock():
     current_screen_halach_clock = (current_screen_halach_clock + 0.25) % len(esberim)  # זה גורם מחזור של שניות לאיזה נתונים יוצגו במסך
     
     
+    ############################################################################
+    ###########################################################################3
+    ############################################################################
+    # איזור הדפסת זמנים בשעון רגיל. כל האיזור עדיין בבניה
+    
+    #חישוב מספר השקיעה מהזריחה לשקיעה
+    seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
+    seconds_day_mga = (mga_sunset - mga_sunrise) / 12 if mga_sunrise and mga_sunset else None
+    
+    def hhh(start_time, seconsd_per_hour, hour):
+        if seconsd_per_hour:
+            AAA = start_time + (seconsd_per_hour * hour)
+             # עיגול לדקה הקרובה
+            total_seconds = int(AAA + 30) // 60 * 60 
+            time_value = time.gmtime(total_seconds)
+            return time.strftime("%H:%M", time_value)
+            # אם רוצים בלי עיגול אלא כולל שניות
+            #time_value = time.gmtime(AAA)
+            #return time.strftime("%H:%M:%S", time_value) 
+        else:
+            return reverse("שגיאה")
+        
+    
+
+    zmanim = [
+        
+        ["עלות השחר 16-", hhh(mga_sunrise, seconds_day_mga, hour=0)],
+        ["זריחה", hhh(sunrise, seconds_day_mga, hour=0)],
+        ["סוף שמע מגא", hhh(mga_sunrise, seconds_day_mga, hour=3)],
+        ["סוף שמע גרא", hhh(sunrise, seconds_day_gra, hour=3)],
+        ["סוף תפילה מגא",  hhh(mga_sunrise, seconds_day_mga, hour=4)],
+        ["סוף תפילה גרא", hhh(sunrise, seconds_day_gra, hour=4)],
+        ["חצות", hhh(sunrise, seconds_day_gra, hour=6)],
+        ["מנחה גדולה", hhh(sunrise, seconds_day_gra, hour=6.5)],
+        ["מנחה קטנה", hhh(sunrise, seconds_day_gra, hour=9.5)],
+        ["פלג המנחה", hhh(sunrise, seconds_day_gra, hour=10.75)],
+        ["שקיעה", hhh(sunrise, seconds_day_gra, hour=12)],
+        ["צאת הכוכבים דרבינו תם 16-", hhh(mga_sunrise, seconds_day_mga, hour=12)],
+    ]
+
+    global current_screen_zmanim
+    # אם רוצים זמן אחד בשורה
+    #text = reverse(zmanim[int(current_screen_zmanim)][0])
+    #time_i = zmanim[int(current_screen_zmanim)][1]
+    #SSS = f' {text}: {time_i}'
+    #canvas.itemconfig(sgb_id, text=SSS)
+    #current_screen_zmanim = (current_screen_zmanim + 0.25) % len(zmanim)
+    
+    # אם רוצים שני זמנים בשורה
+    lines = []
+    base_index = int(current_screen_zmanim) * 2
+
+    for i in range(2):
+        index = (base_index + i) % len(zmanim)
+        label = reverse(zmanim[index][0])
+        time_val = zmanim[index][1]
+        lines.append(f'{label}: {time_val}')
+
+    SSS = '   |   '.join(lines)
+    canvas.itemconfig(sgb_id, text=SSS)
+    current_screen_zmanim = (current_screen_zmanim + 0.15) % ((len(zmanim) + 1) // 2)  # חלוקה לשלשות, מעוגלת כלפי מעלה
+
+    
+    #############################################################################
+    #############################################################################
+    #############################################################################
+    
     # עדכון תאריך לועזי שעה רגילה ואיזור זמן
     canvas.itemconfig(utc_offset_id, text=utc_offset_string)
     canvas.itemconfig(time_id, text=time_string)
@@ -2065,3 +2192,6 @@ if not is_miriam:
 
 # הפעלת החלון הראשי בקביעות
 root_hw.mainloop()
+
+
+
