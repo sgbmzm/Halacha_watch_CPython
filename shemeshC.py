@@ -1859,7 +1859,9 @@ utc_offset_id = canvas.create_text(270 * scale, 157 * scale, text="", fill="whit
 time_id = canvas.create_text(180 * scale, 157 * scale, text="", fill=hw_green, font=scaled_font("miriam", 20, "bold"))
 greg_date_id = canvas.create_text(65 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
 canvas.create_line(0, 166 * scale, screen_width, 166 * scale, fill="yellow")
-sgb_id = canvas.create_text(160 * scale, 174 * scale, text=reverse('לעילוי נשמת מורנו הרב ד"ר מרדכי בורר זצ"ל הי"ד'), fill="magenta", font=scaled_font("miriam", 10))
+
+# איזור שקיים רק במחשב ולא בשעון ההלכה הפיזי שמציג זמני הלכה קשיחים בשעון רגיל
+zmanim_id = canvas.create_text(160 * scale, 174 * scale, text="", fill="magenta", font=scaled_font("miriam", 10))
 
 ######################################################################################################################3
 
@@ -2112,7 +2114,7 @@ def main_halach_clock():
 
     zmanim = [
         
-        ["עלות השחר 16-", hhh(mga_sunrise, seconds_day_mga, hour=0)],
+        ["עלות השחר (מינוס 16)", hhh(mga_sunrise, seconds_day_mga, hour=0)],
         ["זריחה", hhh(sunrise, seconds_day_mga, hour=0)],
         ["סוף שמע מגא", hhh(mga_sunrise, seconds_day_mga, hour=3)],
         ["סוף שמע גרא", hhh(sunrise, seconds_day_gra, hour=3)],
@@ -2123,7 +2125,7 @@ def main_halach_clock():
         ["מנחה קטנה", hhh(sunrise, seconds_day_gra, hour=9.5)],
         ["פלג המנחה", hhh(sunrise, seconds_day_gra, hour=10.75)],
         ["שקיעה", hhh(sunrise, seconds_day_gra, hour=12)],
-        ["צאת הכוכבים דרבינו תם 16-", hhh(mga_sunrise, seconds_day_mga, hour=12)],
+        ["צאת הכוכבים דרבינו תם (מינוס 16)", hhh(mga_sunrise, seconds_day_mga, hour=12)],
     ]
 
     global current_screen_zmanim
@@ -2142,10 +2144,14 @@ def main_halach_clock():
         index = (base_index + i) % len(zmanim)
         label = reverse(zmanim[index][0])
         time_val = zmanim[index][1]
-        lines.append(f'{label}: {time_val}')
+        # בלינוקס צריך סדר הפוך מווינדוס בגלל בעיית הצגת עברית
+        if is_windows:
+            lines.append(f'{label}: {time_val}')
+        else:
+            lines.append(f'{time_val}: {label}')
 
     SSS = '   |   '.join(lines)
-    canvas.itemconfig(sgb_id, text=SSS)
+    canvas.itemconfig(zmanim_id, text=SSS)
     current_screen_zmanim = (current_screen_zmanim + 0.15) % ((len(zmanim) + 1) // 2)  # חלוקה לשלשות, מעוגלת כלפי מעלה
 
     
