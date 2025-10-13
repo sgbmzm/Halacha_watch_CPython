@@ -1316,7 +1316,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "3/8/2025-C"
+VERSION = "13/10/2025-C"
 
 ######################################################################################################################
 
@@ -2002,11 +2002,17 @@ def main_halach_clock():
     # חישוב האם שבת. שבת מוגדרת מהשקיעה של סוף יום שישי עד השקיעה של סוף שבת
     is_shabat = heb_weekday == 7
     
+    # פונקציית עזר פנימית לבדיקה האם נמצאים מהשקיעה ועד מוצאי היום העברי
+    # כברירת מחדל מוצאי היום העברי זה כשהשמש מינוס 4.6 מעלות תחת האופק
+    # מוצאי שבת בלוחות הרגילים זה כשהשמש מינוס 8.5 מעלות תחת האופק
+    def is_sunset_until_motsaei(degrees_for_motsaei = -4.6):
+        return sunset and current_timestamp > sunset and s_alt > degrees_for_motsaei
+    
     # חישוב תוספות לשבת כלומר מיום שישי חצי שעה לפני השקיעה עד השקיעה וכן בשבת מהשקיעה ועד צאת שבת שבלוחות
     normal_weekday = get_normal_weekday(rtc_week_day) # חישוב היום בשבוע של התאריך הלועזי בדווקא
-    half_hour_before_sunset_until_sunset =  sunset and current_timestamp >= (sunset - 1800) and current_timestamp < sunset # 1800 שניות זה חצי שעה לפני השקיעה
-    sunset_until_motsaei_shabat_luchot = sunset and current_timestamp > sunset and s_alt > -8.5
-    is_tosafot_leshabat = (normal_weekday == 6 and half_hour_before_sunset_until_sunset) or (normal_weekday == 7 and sunset_until_motsaei_shabat_luchot)
+    half_hour_before_sunset_until_sunset =  sunset and current_timestamp >= (sunset - 1800) and current_timestamp < sunset # 1800 שניות זה חצי שעה לפני השקיעה  
+    is_tosafot_leshabat = (normal_weekday == 6 and half_hour_before_sunset_until_sunset) or (normal_weekday == 7 and is_sunset_until_motsaei(degrees_for_motsaei = -8.5))
+    shabat_before_motsaei_6 = (normal_weekday == 7 and is_sunset_until_motsaei(degrees_for_motsaei= -6)) 
     
     ##############################################################################
       
@@ -2052,7 +2058,7 @@ def main_halach_clock():
     heb_date_font = font.Font(family=font_family, size=int(font_size), weight=font_weight)   
     # מדידת אורך הטקסט של התאריך העברי בהתאם לפונט שבו השתמשנו לכתוב אותו
     text_width = heb_date_font.measure(heb_date_to_print)
-    y1 = 21 * scale # גובה התחלת הרקע מראש המסך
+    y1 = 20 * scale # גובה התחלת הרקע מראש המסך
     y2 = 38 * scale # גובה סיום הרקע מראש המסך
     center_x = 160 * scale # מרכז המסך מימין לשמאל
     padding = 30 # שוליים נוספים מעבר לטסקט אם רוצים שהרקע יחרוג קצת. לא הכרחי אפשר לעשות 0
@@ -2063,7 +2069,7 @@ def main_halach_clock():
     ####################################################################
     
 
-    HEB_DATE_FG, HEB_DATE_BG  = ("black", "yellow") if is_shabat or holiday_name else ("black", "cyan") if lite_holiday_name or is_rosh_chodesh else ("white", "black")
+    HEB_DATE_FG, HEB_DATE_BG  = ("black", "yellow") if is_shabat or holiday_name or shabat_before_motsaei_6 else ("black", "cyan") if lite_holiday_name or is_rosh_chodesh else ("white", "black")
     canvas.itemconfig(heb_date_rect_id, fill=HEB_DATE_BG)
     canvas.itemconfig(heb_date_id, text=heb_date_to_print, fill=HEB_DATE_FG)
     
@@ -2203,6 +2209,8 @@ if not is_miriam:
 
 # הפעלת החלון הראשי בקביעות
 root_hw.mainloop()
+
+
 
 
 
