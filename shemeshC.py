@@ -2149,6 +2149,10 @@ def main_halach_clock():
             lines.append(f'{label}: {time_val}')
         else:
             lines.append(f'{time_val} :{label}')
+          
+    # הופכים את סדר האיברים עבור לינוקס כדי שיהיה מימין לשמאל: לדוגמא מגא מימין וגרא משמאל
+    if not is_windows:
+        lines = lines[::-1]
 
     SSS = '   |   '.join(lines)
     canvas.itemconfig(zmanim_id, text=SSS)
@@ -2198,6 +2202,7 @@ if not is_miriam:
 
 # הפעלת החלון הראשי בקביעות
 root_hw.mainloop()
+
 
 
 
