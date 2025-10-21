@@ -247,7 +247,6 @@ class RiSet:
     tim = None
     ## For sunrise and sunset time search: What is the height of the sun above the horizon at sunrise or sunset.
     ##The normal default is -0.833 for normal sunrise and sunset
-    sinho_sun_riset = -0.833 ## 
 
     @classmethod
     def mtime(cls):
@@ -259,14 +258,15 @@ class RiSet:
             t -= 10957 * 86400
         cls.tim = t
 
-    def __init__(self, lat=LAT, long=LONG, lto=0, tl=None, dst=lambda x: x):  # Local defaults
+    def __init__(self, lat=LAT, long=LONG, lto=0, riset_deg = -0.833, tlight_deg=None, dst=lambda x: x):  # Local defaults ###########
         self.sglat = sin(radians(lat))
         self.cglat = cos(radians(lat))
         self.lat = lat ###########
         self.long = long
         self.check_lto(lto)  # -15 < lto < 15
         self.lto = round(lto * 3600)  # Localtime offset in secs
-        self.tlight = sin(radians(tl)) if tl is not None else tl
+        self.sinho_riset = sin(radians(riset_deg)) ###########
+        self.tlight = sin(radians(tlight_deg)) if tlight_deg is not None else tlight_deg
         self.dst = dst
         self.mjd = None  # Current integer MJD
         # Times in integer secs from midnight on current day (in machine time adjusted for DST)
@@ -503,9 +503,10 @@ class RiSet:
         t_rise = None  # Rise and set times in secs from midnight
         t_set = None
         if tl:
-            sinho = -self.tlight
+            sinho = self.tlight #### -self.tlight
         else:
-            sinho = sin(radians(RiSet.sinho_sun_riset)) if sun else sin(radians(8 / 60)) ## sinho_sun_riset
+            #sinho = sin(radians(RiSet.sinho_sun_riset)) if sun else sin(radians(8 / 60)) ## sinho_sun_riset
+            sinho = self.sinho_riset #######
         # moonrise taken as centre of moon at +8 arcmin
         # sunset upper limb simple refraction
         # The loop finds the sin(alt) for sets of three consecutive
@@ -1902,14 +1903,28 @@ def main_halach_clock():
         # ריקון כל המשתנים כדי שלא ישתמשו בנתונים לא נכונים
         sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise = [None] * 8
         
-        MGA_deg = 16 # משתנה ששולט על חישוב גובה השמש במעלות לשיטת המג"א ונועד במקור לחישוב דמדומים # אם כותבים 16 זה אומר מינוס 16
-        # MGA_deg אם עושים None או False או 0 זה לא מחושב כלל (ולכן אם במקרה רוצים כאן זריחה גיאומטרית חייבים להגדיר 0.00001)
+        # מגדירים את משתנה המחלקה tim לזמן הרצוי. אם לא מגדירים אז הזמן הוא לפי הזמן הפנימי של הבקר או המחשב
+        RiSet.tim = round(current_location_timestamp)
         
-        RiSet.tim = round(current_timestamp) ############### אם לא מגדירים את זה אז הזמן הוא לפי הזמן הפנימי של הבקר
-        #RiSet.sinho_sun_riset = 0.0 # אם רוצים שזריחה ושקיעה של השמש יהיו לפי זריחה ושקיעה גיאומטריים ולא לפי מינוס 0.833. אם לא מגדירים אז כברירת מחדל יהיה 0.833 מינוס
+        degs_for_rise_set = -0.833
+        degs_for_mga = -16
+        degs_for_tset_hacochavim = -4.61
+        degs_for_misheiacir = -10.5
+        
+        # tlight_deg קובע כמה מעלות תחת האופק ייחשב דמדומים ואם לא מוגדר אז לא מחושב
+        # riset_deg קובע כמה מעלות תחת האופק ייחשב זריחה ושקיעה ואם לא מוגדר אז מחושב -0.833 
         # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום אבל ממילא מוכרחים בסוף להגדיר riset.set_day(0) ואז יחושבו שוב
-        riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, tl=MGA_deg) # lto=location_offset_hours ####
-            
+        riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= -0.833, tlight_deg= -16) # lto=location_offset_hours ####
+        
+        # חישוב דמדומים נוספים עבור צאת הכוכבים או משיכיר את חבירו וכדומה באמצעות מופע מחלקה חדש
+        # אני מנצל כאן את הגדרת גובה הזריחה והשקיעה וגובה הדמדומים ובמקום זה עושה את הגבהים המבוקשים עבורי
+        # בכל מופע כזה אפשר לחשב 2 זמנים שלכל אחד מהם יש התחלה וסוף - וההתחלה זה זריחה והסוף זה שקיעה
+        # אם השמש לא מגיעה לגובה המבוקש בתאריך ובמיקום המבוקש - זה מחזיר None
+        # כאן לא צריך לחשב עבור היום הקודם אלא זה מידע ליממה הנוכחית. לכן לא צריך להגדיר riset1.set_day(0) כי זה קורה לבד
+        riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= degs_for_tset_hacochavim, tlight_deg= degs_for_misheiacir)
+        global tset_hacochavim, misheiakir
+        tset_hacochavim, misheiakir = riset1.sunset(1), riset1.tstart(1)
+
         # הגדרת התאריך על היום הקודם ושמירת המידע הדרוש 
         riset.set_day(-1)
         yesterday_sunset, mga_yesterday_sunset = riset.sunset(1), riset.tend(1)
@@ -1929,6 +1944,7 @@ def main_halach_clock():
         last_location_date = current_location_date
         last_location_riset = riset
         ##########################################
+        
    
     # בכל מקרה ריסט הוא הקודם שההיה בשימוש כדי לחסוך בחישובים מיותרים
     # והריסט הקודם עודכן לעיל להיות עדכני אם השתנה המיקום או התאריך
@@ -1945,11 +1961,15 @@ def main_halach_clock():
     ################## חישוב השעה הזמנית הנוכחית גרא ומגא  ##################
     
     # הדפסות לניסיון כשיש בעיות
-    #print("sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(sunrise)))
-    #print("sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(sunset)))
-    #print("mga_sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunrise)))
-    #print("mga_sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunset)))
-    #print("")
+    print_times = False
+    if print_times:
+        print("sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(sunrise)))
+        print("sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(sunset)))
+        print("mga_sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunrise)))
+        print("mga_sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunset)))
+        print("misheiakir",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(misheiakir)))
+        print("tset_hacochavim", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(tset_hacochavim)))
+        print("")
       
     # כל החישובים נעשים רק אם יש זריחה ושקיעה ביממה זו במיקום זה והזריחה היא לפני השקיעה. כי אולי במיקום הזה אין בכלל זריחה ושקיעה ביום זה
     if sunrise and sunset and sunrise < sunset:
@@ -2121,67 +2141,34 @@ def main_halach_clock():
     seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
     seconds_day_mga = (mga_sunset - mga_sunrise) / 12 if mga_sunrise and mga_sunset else None
     
-    def hhh(start_time, seconsd_per_hour, hour):
-        if seconsd_per_hour:
-            AAA = start_time + (seconsd_per_hour * hour)
-             # עיגול לדקה הקרובה
-            total_seconds = int(AAA + 30) // 60 * 60 
-            time_value = time.gmtime(total_seconds)
-            return time.strftime("%H:%M", time_value)
-            # אם רוצים בלי עיגול אלא כולל שניות
-            #time_value = time.gmtime(AAA)
-            #return time.strftime("%H:%M:%S", time_value) 
-        else:
-            return reverse("שגיאה")
-        
+    def hhh(start_time, seconsd_per_hour, hour):   
+        AAA = start_time + (seconsd_per_hour * hour)
+         # עיגול לדקה הקרובה
+        total_seconds = int(AAA + 30) // 60 * 60 
+        time_value = time.gmtime(total_seconds)
+        return time.strftime("%H:%M", time_value)
+        # אם רוצים בלי עיגול אלא כולל שניות
+        #time_value = time.gmtime(AAA)
+        #return time.strftime("%H:%M:%S", time_value) 
     
 
     zmanim = [
-        
-        [f"עלות השחר {reverse('(16)')}", hhh(mga_sunrise, seconds_day_mga, hour=0)],
-        ["זריחה", hhh(sunrise, seconds_day_mga, hour=0)],
-        ["סוף שמע מגא", hhh(mga_sunrise, seconds_day_mga, hour=3)],
-        ["סוף שמע גרא", hhh(sunrise, seconds_day_gra, hour=3)],
-        ["סוף תפילה מגא",  hhh(mga_sunrise, seconds_day_mga, hour=4)],
-        ["סוף תפילה גרא", hhh(sunrise, seconds_day_gra, hour=4)],
-        ["חצות", hhh(sunrise, seconds_day_gra, hour=6)],
-        ["מנחה גדולה", hhh(sunrise, seconds_day_gra, hour=6.5)],
-        ["מנחה קטנה", hhh(sunrise, seconds_day_gra, hour=9.5)],
-        ["פלג המנחה", hhh(sunrise, seconds_day_gra, hour=10.75)],
-        ["שקיעה", hhh(sunrise, seconds_day_gra, hour=12)],
-        [f"צאת הכוכבים דרבינו תם {reverse('(16)')}", hhh(mga_sunrise, seconds_day_mga, hour=12)],
+        ["להלן זמני היום בשעון רגיל - בעיגול לדקה הקרובה"],
+        [f"עלות השחר {reverse('(16)')}:   {reverse(hhh(mga_sunrise, 0, 0))}   |   משיכיר {reverse('(10.5)')}:   {reverse(hhh(misheiakir, 0, 0))}"], 
+        [f"זריחה מישורית: {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
+        [f"סוף שמע   |   מגא - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
+        [f"סוף תפילה   |   מגא {reverse('(16)')} -   {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
+        [f"חצות: {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
+        [f"מנחה   |   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה -   {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג -   {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
+        [f"שקיעה מישורית: {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
+        [f"צאת הכוכבים   |   גאונים {reverse('(4.61)')} -   {reverse(hhh(tset_hacochavim, 0, 0))}, רבינו-תם {reverse('(16)')} -   {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
     ]
+    
 
     global current_screen_zmanim
-    # אם רוצים זמן אחד בשורה
-    #text = reverse(zmanim[int(current_screen_zmanim)][0])
-    #time_i = zmanim[int(current_screen_zmanim)][1]
-    #SSS = f' {text}: {time_i}'
-    #canvas.itemconfig(sgb_id, text=SSS)
-    #current_screen_zmanim = (current_screen_zmanim + 0.25) % len(zmanim)
-    
-    # אם רוצים שני זמנים בשורה
-    lines = []
-    base_index = int(current_screen_zmanim) * 2
-
-    for i in range(2):
-        index = (base_index + i) % len(zmanim)
-        label = reverse(zmanim[index][0])
-        time_val = zmanim[index][1]
-        # בלינוקס צריך סדר הפוך מווינדוס בגלל בעיית הצגת עברית
-        if is_windows:
-            lines.append(f'{label}: {time_val}')
-        else:
-            lines.append(f'{time_val} :{label}')
-          
-    # הופכים את סדר האיברים עבור לינוקס כדי שיהיה מימין לשמאל: לדוגמא מגא מימין וגרא משמאל
-    if not is_windows:
-        lines = lines[::-1]
-
-    SSS = '   |   '.join(lines)
+    SSS = reverse(zmanim[int(current_screen_zmanim)][0])
     canvas.itemconfig(zmanim_id, text=SSS)
-    current_screen_zmanim = (current_screen_zmanim + 0.15) % ((len(zmanim) + 1) // 2)  # חלוקה לשלשות, מעוגלת כלפי מעלה
-
+    current_screen_zmanim = (current_screen_zmanim + 0.15) % len(zmanim)
     
     #############################################################################
     #############################################################################
