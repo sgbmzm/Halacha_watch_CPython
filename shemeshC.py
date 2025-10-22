@@ -1461,11 +1461,26 @@ def calculate_temporal_time(timestamp, sunrise_timestamp, sunset_timestamp):
         temporal_time = f'{zmanit_hour:02.0f}:{zmanit_minute:02.0f}:{zmanit_second:02.0f}'
         
         return temporal_time, seconds_per_temporal_hour_in_day_or_night
-
+    
+    
+# פונקצייה לחישוב שעון המגרב או שעון ארץ ישראל כלומר כמה זמן עבר מהשקיעה האחרונה עד הרגע הנוכחי
+# כל הזמנים צריכים להינתן בפורמט חותמת זמן
+# פונקצייה זו יכולה לפעול גם בכל פייתון רגיל היא לגמרי חישובית ולא תלוייה בכלום חוץ מהמשתנים שלה
+# חייבים לתת לה את זמן השקיעה המתאים כלומר השקיעה של היום או לאחר חצות הלילה השקיעה של אתמול הלועזי
+def calculate_magrab_time(current_timestamp, last_sunset_timestamp):
+        
+    # חישוב כמה שניות עברו מאז הזריחה או השקיעה עד הזמן הנוכחי 
+    time_since_last_sunset = current_timestamp - last_sunset_timestamp
+    
+    # הדפסת השעה הזמנית המתאימה בפורמט שעות:דקות:שניות
+    magrab_time = str(convert_seconds(time_since_last_sunset, to_hours=True))
+    
+    return magrab_time
 
 ##############################################################################################################        
 # הגדרת שמות עבור משתנים גלובליים ששומרים את כל הזמנים הדרושים לחישובים
 sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise = [None] * 8
+tset_hacochavim, misheiakir = [None] * 2
 ##############################################################################################################    
 
 def get_sunrise_sunset_timestamps(current_timestamp, is_gra = True):
@@ -1879,6 +1894,7 @@ def main_halach_clock():
     global location, last_location, last_location_date, last_location_riset
     # הצהרה על משתנים גלובליים ששומרים את הזמנים הדרושים
     global sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise
+    global tset_hacochavim, misheiakir
      
     # קבלת הזמן המקומי למיקום המבוקש כחותמת זמן - באמצעות פונקצייה שהוגדרה לעיל    
     current_location_timestamp, location_offset_hours, location_offset_seconds = get_current_location_timestamp()
@@ -1902,6 +1918,7 @@ def main_halach_clock():
       
         # ריקון כל המשתנים כדי שלא ישתמשו בנתונים לא נכונים
         sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise = [None] * 8
+        tset_hacochavim, misheiakir = [None] * 2
         
         # מגדירים את משתנה המחלקה tim לזמן הרצוי. אם לא מגדירים אז הזמן הוא לפי הזמן הפנימי של הבקר או המחשב
         RiSet.tim = round(current_location_timestamp)
@@ -1914,17 +1931,8 @@ def main_halach_clock():
         # tlight_deg קובע כמה מעלות תחת האופק ייחשב דמדומים ואם לא מוגדר אז לא מחושב
         # riset_deg קובע כמה מעלות תחת האופק ייחשב זריחה ושקיעה ואם לא מוגדר אז מחושב -0.833 
         # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום אבל ממילא מוכרחים בסוף להגדיר riset.set_day(0) ואז יחושבו שוב
-        riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= -0.833, tlight_deg= -16) # lto=location_offset_hours ####
+        riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= degs_for_rise_set, tlight_deg= degs_for_mga) # lto=location_offset_hours ####
         
-        # חישוב דמדומים נוספים עבור צאת הכוכבים או משיכיר את חבירו וכדומה באמצעות מופע מחלקה חדש
-        # אני מנצל כאן את הגדרת גובה הזריחה והשקיעה וגובה הדמדומים ובמקום זה עושה את הגבהים המבוקשים עבורי
-        # בכל מופע כזה אפשר לחשב 2 זמנים שלכל אחד מהם יש התחלה וסוף - וההתחלה זה זריחה והסוף זה שקיעה
-        # אם השמש לא מגיעה לגובה המבוקש בתאריך ובמיקום המבוקש - זה מחזיר None
-        # כאן לא צריך לחשב עבור היום הקודם אלא זה מידע ליממה הנוכחית. לכן לא צריך להגדיר riset1.set_day(0) כי זה קורה לבד
-        riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= degs_for_tset_hacochavim, tlight_deg= degs_for_misheiacir)
-        global tset_hacochavim, misheiakir
-        tset_hacochavim, misheiakir = riset1.sunset(1), riset1.tstart(1)
-
         # הגדרת התאריך על היום הקודם ושמירת המידע הדרוש 
         riset.set_day(-1)
         yesterday_sunset, mga_yesterday_sunset = riset.sunset(1), riset.tend(1)
@@ -1944,6 +1952,15 @@ def main_halach_clock():
         last_location_date = current_location_date
         last_location_riset = riset
         ##########################################
+        
+        # חישוב דמדומים נוספים עבור צאת הכוכבים או משיכיר את חבירו וכדומה באמצעות מופע מחלקה חדש
+        # אני מנצל כאן את הגדרת גובה הזריחה והשקיעה וגובה הדמדומים ובמקום זה עושה את הגבהים המבוקשים עבורי
+        # בכל מופע כזה אפשר לחשב 2 זמנים שלכל אחד מהם יש התחלה וסוף - וההתחלה זה זריחה והסוף זה שקיעה
+        # אם השמש לא מגיעה לגובה המבוקש בתאריך ובמיקום המבוקש - זה מחזיר None
+        # כאן לא צריך לחשב עבור היום הקודם אלא זה מידע ליממה הנוכחית. לכן לא צריך להגדיר riset1.set_day(0) כי זה קורה לבד
+        riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= degs_for_tset_hacochavim, tlight_deg= degs_for_misheiacir)
+        tset_hacochavim, misheiakir = riset1.sunset(1), riset1.tstart(1)
+        ########################################################################
         
    
     # בכל מקרה ריסט הוא הקודם שההיה בשימוש כדי לחסוך בחישובים מיותרים
@@ -2052,6 +2069,11 @@ def main_halach_clock():
     shabat_before_motsaei_6 = (normal_weekday == 7 and is_sunset_until_motsaei(degrees_for_motsaei= -6)) 
     
     ##############################################################################
+    # השקיעה האחרונה שהייתה היא בדרך כלל השקיעה של אתמול. אבל בין השקיעה לשעה 12 בלילה השקיעה האחרונה היא השקיעה של היום
+    last_sunset_timestamp = yesterday_sunset if current_timestamp < sunset else sunset
+    magrab_time = calculate_magrab_time(current_timestamp, last_sunset_timestamp) if last_sunset_timestamp else reverse("שגיאה  ") # רק אם יש שקיעה אחרונה אפשר לחשב
+    #print("magrab_time", magrab_time)
+    
       
     # מכאן והלאה ההדפסות למסך
     
@@ -2155,13 +2177,13 @@ def main_halach_clock():
     zmanim = [
         ["להלן זמני היום בשעון רגיל - בעיגול לדקה הקרובה"],
         [f"עלות השחר {reverse('(16)')}:   {reverse(hhh(mga_sunrise, 0, 0))}   |   משיכיר {reverse('(10.5)')}:   {reverse(hhh(misheiakir, 0, 0))}"], 
-        [f"זריחה מישורית: {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
-        [f"סוף שמע   |   מגא - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
-        [f"סוף תפילה   |   מגא {reverse('(16)')} -   {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
-        [f"חצות: {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
-        [f"מנחה   |   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה -   {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג -   {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
-        [f"שקיעה מישורית: {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
-        [f"צאת הכוכבים   |   גאונים {reverse('(4.61)')} -   {reverse(hhh(tset_hacochavim, 0, 0))}, רבינו-תם {reverse('(16)')} -   {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
+        [f"זריחה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
+        [f"סוף שמע:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
+        [f"סוף תפילה:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
+        [f"חצות היום (וכנגדו בלילה): {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
+        [f"מנחה:   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה - {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג - {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
+        [f"שקיעה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
+        [f"צאת הכוכבים:   גאונים {reverse('(4.61)')} - {reverse(hhh(tset_hacochavim, 0, 0))},   רבינו-תם {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
     ]
     
 
