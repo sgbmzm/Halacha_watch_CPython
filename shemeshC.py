@@ -257,7 +257,9 @@ class RiSet:
         if time.gmtime(0)[0] == 2000:  # Machine epoch
             t -= 10957 * 86400
         cls.tim = t
-
+    
+    # riset_deg: Degrees below the horizon defined as sunrise and sunset. Default is -0.833
+    # tlight_deg: Degrees below the horizon defined as twilight. default is None = not calculated. example: -18, -12, -6 or any value
     def __init__(self, lat=LAT, long=LONG, lto=0, riset_deg = -0.833, tlight_deg=None, dst=lambda x: x):  # Local defaults ###########
         self.sglat = sin(radians(lat))
         self.cglat = cos(radians(lat))
@@ -505,7 +507,7 @@ class RiSet:
         if tl:
             sinho = self.tlight #### -self.tlight
         else:
-            #sinho = sin(radians(RiSet.sinho_sun_riset)) if sun else sin(radians(8 / 60)) ## sinho_sun_riset
+            #sinho = sin(radians(-0.833)) if sun else sin(radians(8 / 60))
             sinho = self.sinho_riset #######
         # moonrise taken as centre of moon at +8 arcmin
         # sunset upper limb simple refraction
@@ -1974,8 +1976,6 @@ def main_halach_clock():
     # לדעת את גובה השמש והירח אפשר גם במיקום שאין בו זריחות ושקיאות וזה לא מחזיר שגיאה אלא מחזיר None שזה כמו אפס
     s_alt, s_az, s_ra, s_dec = riset.alt_az_ra_dec(current_hour, sun=True)
     m_alt, m_az, m_ra, m_dec = riset.alt_az_ra_dec(current_hour, sun=False)
-       
-    ################## חישוב השעה הזמנית הנוכחית גרא ומגא  ##################
     
     # הדפסות לניסיון כשיש בעיות
     print_times = False
@@ -1987,6 +1987,8 @@ def main_halach_clock():
         print("misheiakir",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(misheiakir)))
         print("tset_hacochavim", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(tset_hacochavim)))
         print("")
+        
+    ################## חישוב השעה הזמנית הנוכחית גרא ומגא  ##################
       
     # כל החישובים נעשים רק אם יש זריחה ושקיעה ביממה זו במיקום זה והזריחה היא לפני השקיעה. כי אולי במיקום הזה אין בכלל זריחה ושקיעה ביום זה
     if sunrise and sunset and sunrise < sunset:
@@ -2070,7 +2072,7 @@ def main_halach_clock():
     
     ##############################################################################
     # השקיעה האחרונה שהייתה היא בדרך כלל השקיעה של אתמול. אבל בין השקיעה לשעה 12 בלילה השקיעה האחרונה היא השקיעה של היום
-    last_sunset_timestamp = yesterday_sunset if current_timestamp < sunset else sunset
+    last_sunset_timestamp = yesterday_sunset if sunset and current_timestamp < sunset else sunset
     magrab_time = calculate_magrab_time(current_timestamp, last_sunset_timestamp) if last_sunset_timestamp else reverse("שגיאה  ") # רק אם יש שקיעה אחרונה אפשר לחשב
     #print("magrab_time", magrab_time)
     
@@ -2180,7 +2182,7 @@ def main_halach_clock():
         [f"זריחה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
         [f"סוף שמע:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
         [f"סוף תפילה:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
-        [f"חצות היום (וכנגדו בלילה): {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
+        [f"חצות היום - וכנגדו בלילה: {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
         [f"מנחה:   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה - {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג - {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
         [f"שקיעה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
         [f"צאת הכוכבים:   גאונים {reverse('(4.61)')} - {reverse(hhh(tset_hacochavim, 0, 0))},   רבינו-תם {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
