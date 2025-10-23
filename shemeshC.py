@@ -1319,7 +1319,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "21/10/2025-C"
+VERSION = "23/10/2025-C"
 
 ######################################################################################################################
 
@@ -1353,6 +1353,47 @@ is_windows = platform.system() == "Windows"
 # המשמעות של זה מגיעה לידי ביטוי בפונקצייה הראשית: main
 # זה משתנה חשוב נורא
 power_state = True
+
+#####################################################################
+
+# במיקרופייתון אין פונקציית time.strftime ולכן מחליף כך
+def format_time(time_tuple, with_seconds = True, with_date=False):
+    """המרת tuple של זמן למחרוזת בסגנון HH:MM:SS,  או '%H:%M:%S %d/%m/%Y'"""
+    t = time_tuple
+    return f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d} {t[2]:02d}/{t[1]:02d}/{t[0]}" if with_date else f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}" if with_seconds else f"{t[3]:02d}:{t[4]:02d}"
+
+# פונקצייה לחישוב זמן מקומי (לפי חצות שנתי ממוצע שהוא בשעה 12), לפי קו האורך הגיאוגרפי האמיתי 
+def localmeantime(utc_time, longitude):
+    offset_seconds = int(240 * longitude)  # 4 דקות לכל מעלה
+    lmt_seconds = utc_time + offset_seconds
+    lmt_tuple = time.gmtime(int(lmt_seconds))  # לא מוסיף הטיה מקומית
+    return lmt_tuple
+
+def calculate_delta_t(year):
+    """
+    Calculate ΔT (seconds) for years 2000-2500 using the polynomial expressions.
+    https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html
+    """
+    y = float(year)
+    
+    if 2000 <= y < 2005:
+        t = y - 2000
+        dt = 63.86 + 0.3345*t - 0.060374*t**2 + 0.0017275*t**3 + 0.000651814*t**4 + 0.00002373599*t**5
+    elif 2005 <= y < 2050:
+        t = y - 2000
+        dt = 62.92 + 0.32217*t + 0.005589*t**2
+    elif 2050 <= y < 2150:
+        u = (y - 1820)/100
+        dt = -20 + 32*u**2 - 0.5628*(2150 - y)
+    else:  # y >= 2150
+        u = (y - 1820)/100
+        dt = -20 + 32*u**2
+
+    # Small lunar correction (not needed for 1955-2005, but outside this range we apply)
+    if y < 1955 or y > 2005:
+        dt += -0.000012932 * (y - 1955)**2
+
+    return dt
 
 
 # פונקצייה לקבלת הפרש השעות המקומי מגריניץ בלי התחשבות בשעון קיץ
@@ -2071,12 +2112,96 @@ def main_halach_clock():
     shabat_before_motsaei_6 = (normal_weekday == 7 and is_sunset_until_motsaei(degrees_for_motsaei= -6)) 
     
     ##############################################################################
+    
+    # חישוב שעונים נוספים
+    #####################
+    
+    ########### 1. שעון שעות מהשקיעה שנקרא שעון המגרב
     # השקיעה האחרונה שהייתה היא בדרך כלל השקיעה של אתמול. אבל בין השקיעה לשעה 12 בלילה השקיעה האחרונה היא השקיעה של היום
-    last_sunset_timestamp = yesterday_sunset if sunset and current_timestamp < sunset else sunset
+    last_sunset_timestamp = yesterday_sunset if (sunset and current_timestamp < sunset) else sunset
     magrab_time = calculate_magrab_time(current_timestamp, last_sunset_timestamp) if last_sunset_timestamp else reverse("שגיאה  ") # רק אם יש שקיעה אחרונה אפשר לחשב
     #print("magrab_time", magrab_time)
+     
+    ########### 2. שעון מקומי ממוצע
+    utc_timestamp_now = time.time() # זה מחזיר את הזמן הנוכחי בגריניץ כחותמת זמן ולא את הזמן המקומי
+    lmt = localmeantime(utc_timestamp_now, location["long"])
+    lmt_string = time.strftime("%H:%M:%S", lmt)
     
-      
+    ######### 3. שעון מקומי אמיתי שבו תמיד בחצות המוקמי האמיתי השעה היא 12:00 בצהריים
+    
+    # פונקצייה שמחשבת את ההפרש בין שעון מקומי אמיתי לשעון מקומי ממוצע.
+    # ההפרש הזה מורכב ממשוואת הזמן יחד עם דלטא טי
+    def calculate_lmt_lst_different():
+        
+        # שלב ראשון חישוב חצות בשעון רגיל.
+        # בינתיים חישבתי חצות בדרך לא הכי מדוייקת באמצעות שעה זמנית 6 כלומר חצי הזמן בין הזריחה המישורית לשקיעה המישורית
+        # הכי מדוייק זה שמש באזימוט 180 או אם אי אפשר אז לפחות אמצע בין זריחה ושקיעה גיאומטריים של 0 מעלות
+        seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
+        chatsot_seconsds = sunrise + (seconds_day_gra * 6)
+        
+        # המרת החצות לשעה בגריניץ באותו זמן
+        chatsot_seconsds_gm = chatsot_seconsds-location_offset_seconds
+           
+        # שלב שני חישוב שעת חצות בשעון מקומי ממוצע ובדיקה כמה סוטה מהשעה 12:00 וכך מוצאים את הפרש הזמן
+        # בדיקת שעת חצות בשעון מקומי ממוצע
+        chatsot_lmt = localmeantime(chatsot_seconsds_gm, location["long"])
+        chatsot_lmt_string = time.strftime("%H:%M:%S", chatsot_lmt)
+        
+        # בונים את הזמן של 12:00 באותו היום 
+        noon_timestamp = time.mktime(chatsot_lmt[:3] + (12, 0, 0) + chatsot_lmt[6:])
+        chatsot_lmt_timestamp = time.mktime(chatsot_lmt)
+                
+        # מחשבים את ההפרש בין השעה 12:00 לבין שעת חצות בשעון מקומי ממוצע. זה ההפרש lmt_lst
+        lmt_lst_different = chatsot_lmt_timestamp - noon_timestamp
+        
+        return lmt_lst_different
+        
+        
+    # הפחתת או הוספת הפרש lmt_lst לשעון המקומי הממוצע כדי לקבל שעון מקומי אמיתי.    
+    lmt_lst_different = calculate_lmt_lst_different()
+    local_solar_time = localmeantime(utc_timestamp_now - lmt_lst_different, location["long"])
+    local_solar_time_string = time.strftime("%H:%M:%S", local_solar_time)
+
+    ######## 4. השעה הנוכחית בגריניץ
+    gm_time_now = time.gmtime()
+    gm_time_now_string = time.strftime("%H:%M:%S", gm_time_now)
+    
+    ######### 5. משוואת הזמן
+    delta_t = calculate_delta_t(year)
+    equation_of_time_string = convert_seconds(lmt_lst_different + delta_t) # עדיין צריך לתקן בהדפסה את סימני מינוס ופלוס
+    
+    ############################################################################
+    # איזור הדפסת זמנים בשעון רגיל
+    
+    #חישוב מספר השניות מהזריחה לשקיעה
+    seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
+    seconds_day_mga = (mga_sunset - mga_sunrise) / 12 if mga_sunrise and mga_sunset else None
+    
+    def hhh(start_time, seconsd_per_hour, hour):   
+        AAA = start_time + (seconsd_per_hour * hour)
+         # עיגול לדקה הקרובה
+        total_seconds = int(AAA + 30) // 60 * 60 
+        time_value = time.gmtime(total_seconds)
+        return time.strftime("%H:%M", time_value)
+        # אם רוצים בלי עיגול אלא כולל שניות
+        #time_value = time.gmtime(AAA)
+        #return time.strftime("%H:%M:%S", time_value)
+        
+    
+    zmanim = [
+        ["להלן זמני היום בשעון רגיל - בעיגול לדקה הקרובה"],
+        [f"עלות השחר {reverse('(16)')}:   {reverse(hhh(mga_sunrise, 0, 0))}   |   משיכיר {reverse('(10.5)')}:   {reverse(hhh(misheiakir, 0, 0))}"], 
+        [f"זריחה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
+        [f"סוף שמע:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
+        [f"סוף תפילה:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
+        [f"חצות היום - וכנגדו בלילה: {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
+        [f"מנחה:   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה - {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג - {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
+        [f"שקיעה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
+        [f"צאת הכוכבים:   גאונים {reverse('(4.61)')} - {reverse(hhh(tset_hacochavim, 0, 0))},   רבינו-תם {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
+    ]
+    
+    ######################################################################################
+    
     # מכאן והלאה ההדפסות למסך
     
     #voltage_string = f"{round(voltage,1)}v"
@@ -2155,47 +2280,18 @@ def main_halach_clock():
     canvas.itemconfig(hesberim_id, text=f"{CCC}")
     current_screen_halach_clock = (current_screen_halach_clock + 0.25) % len(esberim)  # זה גורם מחזור של שניות לאיזה נתונים יוצגו במסך
     
-    
-    ############################################################################
-    ###########################################################################3
-    ############################################################################
-    # איזור הדפסת זמנים בשעון רגיל. כל האיזור עדיין בבניה
-    
-    #חישוב מספר השקיעה מהזריחה לשקיעה
-    seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
-    seconds_day_mga = (mga_sunset - mga_sunrise) / 12 if mga_sunrise and mga_sunset else None
-    
-    def hhh(start_time, seconsd_per_hour, hour):   
-        AAA = start_time + (seconsd_per_hour * hour)
-         # עיגול לדקה הקרובה
-        total_seconds = int(AAA + 30) // 60 * 60 
-        time_value = time.gmtime(total_seconds)
-        return time.strftime("%H:%M", time_value)
-        # אם רוצים בלי עיגול אלא כולל שניות
-        #time_value = time.gmtime(AAA)
-        #return time.strftime("%H:%M:%S", time_value) 
-    
-
-    zmanim = [
-        ["להלן זמני היום בשעון רגיל - בעיגול לדקה הקרובה"],
-        [f"עלות השחר {reverse('(16)')}:   {reverse(hhh(mga_sunrise, 0, 0))}   |   משיכיר {reverse('(10.5)')}:   {reverse(hhh(misheiakir, 0, 0))}"], 
-        [f"זריחה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
-        [f"סוף שמע:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
-        [f"סוף תפילה:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
-        [f"חצות היום - וכנגדו בלילה: {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
-        [f"מנחה:   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה - {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג - {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
-        [f"שקיעה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
-        [f"צאת הכוכבים:   גאונים {reverse('(4.61)')} - {reverse(hhh(tset_hacochavim, 0, 0))},   רבינו-תם {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
-    ]
-    
-
+    # עדכון שורת הזמנים
     global current_screen_zmanim
     SSS = reverse(zmanim[int(current_screen_zmanim)][0])
     canvas.itemconfig(zmanim_id, text=SSS)
     current_screen_zmanim = (current_screen_zmanim + 0.15) % len(zmanim)
     
-    #############################################################################
-    #############################################################################
+    # אם רוצים להדפיס זמנים במקום 
+    clocks = f"{equation_of_time_string} | {gm_time_now_string} | {lmt_string} | {local_solar_time_string} | {magrab_time}"
+    #canvas.itemconfig(hesberim_id, text=f"{CCC}") # אם במקום שורת ההסברים 
+    # canvas.itemconfig(zmanim_id, text=clocks) # אם במקום שורת הזמנים
+    
+    
     #############################################################################
     
     # עדכון תאריך לועזי שעה רגילה ואיזור זמן
