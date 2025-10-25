@@ -1319,7 +1319,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "24/10/2025-C"
+VERSION = "26/10/2025-C"
 
 ######################################################################################################################
 
@@ -1363,6 +1363,44 @@ def format_time(time_tuple, with_seconds = True, with_date=False):
     t = time_tuple
     return f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d} {t[2]:02d}/{t[1]:02d}/{t[0]}" if with_date else f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}" if with_seconds else f"{t[3]:02d}:{t[4]:02d}"
 
+# פונקצייה להמרת זמן מ-שניות ל- סטרינג שעות דקות ושניות, או רק ל- סטרינג דקות ושניות שבניתי בסיוע רובי הבוט
+def convert_seconds(seconds, to_hours=False):
+    # המרה לערך מוחלט כדי לא להחזיר סימן מינוס
+    seconds = abs(seconds)
+    # חישוב מספר הדקות והשניות שיש בשעה אחת, והדפסתם בפורמט של דקות ושניות
+    if to_hours:
+        return f'{seconds // 3600 :02.0f}:{(seconds % 3600) // 60 :02.0f}:{seconds % 60 :02.0f}'
+    else:
+        return f'{seconds // 60 :02.0f}:{seconds % 60 :02.0f}'
+
+
+def calculate_delta_t(year):
+    """
+    Calculate ΔT (seconds) for years 2000-2500 using the polynomial expressions.
+    https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html
+    """
+    y = float(year)
+    
+    if 2000 <= y < 2005:
+        t = y - 2000
+        dt = 63.86 + 0.3345*t - 0.060374*t**2 + 0.0017275*t**3 + 0.000651814*t**4 + 0.00002373599*t**5
+    elif 2005 <= y < 2050:
+        t = y - 2000
+        dt = 62.92 + 0.32217*t + 0.005589*t**2
+    elif 2050 <= y < 2150:
+        u = (y - 1820)/100
+        dt = -20 + 32*u**2 - 0.5628*(2150 - y)
+    else:  # y >= 2150
+        u = (y - 1820)/100
+        dt = -20 + 32*u**2
+
+    # Small lunar correction (not needed for 1955-2005, but outside this range we apply)
+    if y < 1955 or y > 2005:
+        dt += -0.000012932 * (y - 1955)**2
+
+    return dt
+
+
 # פונקצייה שמקבלת זמן כחותמן זמן ומחזירה את משוואת הזמן בדקות ליום זה
 # לפי Meeus, בקירוב מצוין לשנים 2000–2100
 # נבנתה על ידי צאט גיפיטי
@@ -1395,39 +1433,23 @@ def get_equation_of_time_from_timestamp(timestamp_input):
     
     return equation_of_time_seconds
 
+
 # פונקצייה לחישוב זמן מקומי (לפי חצות שנתי ממוצע שהוא בשעה 12), לפי קו האורך הגיאוגרפי האמיתי 
-def localmeantime(utc_time, longitude):
-    offset_seconds = int(240 * longitude)  # 4 דקות לכל מעלה
-    lmt_seconds = utc_time + offset_seconds
-    lmt_tuple = time.gmtime(int(lmt_seconds))  # לא מוסיף הטיה מקומית
-    return lmt_tuple
-
-def calculate_delta_t(year):
-    """
-    Calculate ΔT (seconds) for years 2000-2500 using the polynomial expressions.
-    https://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html
-    """
-    y = float(year)
-    
-    if 2000 <= y < 2005:
-        t = y - 2000
-        dt = 63.86 + 0.3345*t - 0.060374*t**2 + 0.0017275*t**3 + 0.000651814*t**4 + 0.00002373599*t**5
-    elif 2005 <= y < 2050:
-        t = y - 2000
-        dt = 62.92 + 0.32217*t + 0.005589*t**2
-    elif 2050 <= y < 2150:
-        u = (y - 1820)/100
-        dt = -20 + 32*u**2 - 0.5628*(2150 - y)
-    else:  # y >= 2150
-        u = (y - 1820)/100
-        dt = -20 + 32*u**2
-
-    # Small lunar correction (not needed for 1955-2005, but outside this range we apply)
-    if y < 1955 or y > 2005:
-        dt += -0.000012932 * (y - 1955)**2
-
-    return dt
-
+def LMT_LST_EOT(utc_timestamp, longitude_degrees, LST_EOT = True):
+    offset_seconds = int(240 * longitude_degrees)  # 4 דקות לכל מעלה
+    lmt_seconds = int(utc_timestamp) + offset_seconds # חייבים לעשות אינט למנוע שגיאות במיקרופייתון
+    lmt_tuple = time.gmtime(int(lmt_seconds))   # לא מוסיף הטיה מקומית
+    local_mean_time_string = format_time(lmt_tuple)
+    ####################################################################
+    if LST_EOT:
+        equation_of_time_seconds = get_equation_of_time_from_timestamp(utc_timestamp)
+        lst_seconds = lmt_seconds + int(equation_of_time_seconds) # חייבים לעשות אינט למנוע שגיאות במיקרופייתון
+        lst_tuple = time.gmtime(int(lst_seconds))
+        local_solar_time_string = format_time(lst_tuple)
+        equation_of_time_string = f"{'+' if equation_of_time_seconds >0 else '-'}{convert_seconds(equation_of_time_seconds)}"
+    else:
+        local_solar_time_string, equation_of_time_string = "None","None"
+    return local_mean_time_string, local_solar_time_string, equation_of_time_string
 
 # פונקצייה לקבלת הפרש השעות המקומי מגריניץ בלי התחשבות בשעון קיץ
 # יש אפשרות להגדיר טרו או פאלס האם זה שעון קיץ או לא. כברירת מחדל זה לא
@@ -1540,21 +1562,6 @@ def calculate_temporal_time(timestamp, sunrise_timestamp, sunset_timestamp):
         
         return temporal_time, seconds_per_temporal_hour_in_day_or_night
     
-    
-# פונקצייה לחישוב שעון המגרב או שעון ארץ ישראל כלומר כמה זמן עבר מהשקיעה האחרונה עד הרגע הנוכחי
-# כל הזמנים צריכים להינתן בפורמט חותמת זמן
-# פונקצייה זו יכולה לפעול גם בכל פייתון רגיל היא לגמרי חישובית ולא תלוייה בכלום חוץ מהמשתנים שלה
-# חייבים לתת לה את זמן השקיעה המתאים כלומר השקיעה של היום או לאחר חצות הלילה השקיעה של אתמול הלועזי
-def calculate_magrab_time(current_timestamp, last_sunset_timestamp):
-        
-    # חישוב כמה שניות עברו מאז הזריחה או השקיעה עד הזמן הנוכחי 
-    time_since_last_sunset = current_timestamp - last_sunset_timestamp
-    
-    # הדפסת השעה הזמנית המתאימה בפורמט שעות:דקות:שניות
-    magrab_time = str(convert_seconds(time_since_last_sunset, to_hours=True))
-    
-    return magrab_time
-
 ##############################################################################################################        
 # הגדרת שמות עבור משתנים גלובליים ששומרים את כל הזמנים הדרושים לחישובים
 sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise = [None] * 8
@@ -1966,6 +1973,12 @@ last_location = None
 last_location_date = None
 last_location_riset = None
 
+degs_for_rise_set = -0.833 # מה גובה השמש בשעת זריחה ושקיעה. קובע לשעון שעה זמנית גרא ולהדפסת הזמנים
+degs_for_mga = -16 # מה גובה השמש בשעת עלות השחר וצאת הכוכבים דרת. קובע לשעון שעה זמנית מגא ולהדפסת הזמנים
+degs_for_tset_hacochavim = -4.61 # מה גובה השמש בשעת צאת הכוכבים לשיטת הגאונים. קובע להדפסת הזמנים
+degs_for_misheiacir = -10.5 # מה גובה השמש בשעת משיכיר. קובע להדפסת הזמנים
+hesberim_zmanim_clocks = "hesberim" # or "zmanim", or "clocks"
+
 # הפונקצייה הראשית שבסוף גם מפעילה את הנתונים על המסך
 def main_halach_clock():
                  
@@ -2148,79 +2161,26 @@ def main_halach_clock():
     
     ##############################################################################
     
-    # חישוב שעונים נוספים
+    # חישוב שעונים נוספים ומידע נוסף
     #####################
     
-    ########### 1. שעון שעות מהשקיעה שנקרא שעון המגרב
+    #1. שעון שעות מהשקיעה שנקרא שעון המגרב
     # השקיעה האחרונה שהייתה היא בדרך כלל השקיעה של אתמול. אבל בין השקיעה לשעה 12 בלילה השקיעה האחרונה היא השקיעה של היום
     last_sunset_timestamp = yesterday_sunset if (sunset and current_timestamp < sunset) else sunset
-    magrab_time = calculate_magrab_time(current_timestamp, last_sunset_timestamp) if last_sunset_timestamp else reverse("שגיאה  ") # רק אם יש שקיעה אחרונה אפשר לחשב
-    #print("magrab_time", magrab_time)
+    # חישוב כמה שניות עברו מאז הזריחה או השקיעה עד הזמן הנוכחי #time_since_last_sunset = current_timestamp - last_sunset_timestamp
+    magrab_time_string = convert_seconds((current_timestamp - last_sunset_timestamp), to_hours=True) if last_sunset_timestamp else reverse("שגיאה  ") # רק אם יש שקיעה אחרונה אפשר לחשב
+    
+    ########### 2. שעון מקומי ממוצע, שעון מקומי שמשי אמיתי שחצות תמיד ב 12:00, ומשוואת הזמן
      
-    ########### 2. שעון מקומי ממוצע
-    lmt = localmeantime(current_utc_timestamp, location["long"]) # זה חייב לקבל זמן utc ולא זמן מקומי
-    lmt_string = time.strftime("%H:%M:%S", lmt)
+    local_mean_time_string, local_solar_time_string, equation_of_time_string = LMT_LST_EOT(current_utc_timestamp, location["long"]) # חייב לקבל זמן utc ולא מקומי
     
-    ######### 3. שעון מקומי אמיתי שבו תמיד בחצות המוקמי האמיתי השעה היא 12:00 בצהריים
-    '''
-    # פונקצייה שמחשבת את ההפרש בין שעון מקומי אמיתי לשעון מקומי ממוצע.
-    # ההפרש הזה מורכב ממשוואת הזמן יחד עם דלטא טי
-    def calculate_lmt_lst_different():
-        if sunrise and sunset:
-            # שלב ראשון חישוב חצות בשעון רגיל.
-            # בינתיים חישבתי חצות בדרך לא הכי מדוייקת באמצעות שעה זמנית 6 כלומר חצי הזמן בין הזריחה המישורית לשקיעה המישורית
-            # הכי מדוייק זה שמש באזימוט 180 או אם אי אפשר אז לפחות אמצע בין זריחה ושקיעה גיאומטריים של 0 מעלות
-            seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
-            chatsot_seconsds = sunrise + (seconds_day_gra * 6)
-            
-            # המרת החצות לשעה בגריניץ באותו זמן
-            chatsot_seconsds_gm = chatsot_seconsds-location_offset_seconds
-               
-            # שלב שני חישוב שעת חצות בשעון מקומי ממוצע ובדיקה כמה סוטה מהשעה 12:00 וכך מוצאים את הפרש הזמן
-            # בדיקת שעת חצות בשעון מקומי ממוצע
-            chatsot_lmt = localmeantime(chatsot_seconsds_gm, location["long"])
-            chatsot_lmt_string = time.strftime("%H:%M:%S", chatsot_lmt)
-            
-            # בונים את הזמן של 12:00 באותו היום 
-            noon_timestamp = time.mktime(chatsot_lmt[:3] + (12, 0, 0) + chatsot_lmt[6:])
-            chatsot_lmt_timestamp = time.mktime(chatsot_lmt)
-                    
-            # מחשבים את ההפרש בין השעה 12:00 לבין שעת חצות בשעון מקומי ממוצע. זה ההפרש lmt_lst
-            lmt_lst_different = chatsot_lmt_timestamp - noon_timestamp
-        
-        else:
-            lmt_lst_different = None
-            
-        return lmt_lst_different
-    '''
-        
-    lmt_lst_different = get_equation_of_time_from_timestamp(current_utc_timestamp)
-    local_solar_time = localmeantime(current_utc_timestamp + lmt_lst_different, location["long"])
-    local_solar_time_string = time.strftime("%H:%M:%S", local_solar_time)
-
-    ######## 4. השעה הנוכחית בגריניץ
+    ######## 3. השעה הנוכחית בגריניץ
     gm_time_now = time.gmtime(current_utc_timestamp)
-    gm_time_now_string = time.strftime("%H:%M:%S", gm_time_now)
+    gm_time_now_string = format_time(gm_time_now)
     
-    ######### 5. משוואת הזמן ודלטא-טי
+    ######### 4. דלטא_טי
     delta_t = calculate_delta_t(year)
-    equation_of_time_string = f"{'+' if lmt_lst_different >0 else '-'}{convert_seconds(lmt_lst_different)}"
-    
-    ######################################
-    # חישוב זמן חצות היום באמצעות נוסחה אסטרונומית
-    # הערה: אפשר לחשב זאת בערך גם באמצעות שעה זמנית 6 בשעות זמניות מהנץ לשקיעה במקום וביום שיש הנץ ושקיעה
-    def calculate_local_noon():
-        EoT_sec = get_equation_of_time_from_timestamp(current_utc_timestamp) # משוואת הזמן בשניות
-        noon_utc_sec = (12*3600 - (location["long"]/360.0)*86400 - EoT_sec) # חצות ב-UTC (שניות מ-00:00 UTC)
-        now_days = (current_utc_timestamp - current_utc_timestamp % 86400) # מספר היום בשניות מהאפוך עד חצות הלילה האחרון
-        noon_utc_timestamp = noon_utc_sec + now_days
-        # חצות מקומי
-        noon_local_timestamp = noon_utc_timestamp + location_offset_seconds
-        return noon_local_timestamp
-    
-    noon_local_timestamp = calculate_local_noon()    
-    #print("noon_local",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(noon_local_timestamp)))
-    
+
     ############################################################################
     # איזור הדפסת זמנים בשעון רגיל
     
@@ -2228,7 +2188,7 @@ def main_halach_clock():
     seconds_day_gra = (sunset - sunrise) / 12 if sunrise and sunset else None
     seconds_day_mga = (mga_sunset - mga_sunrise) / 12 if mga_sunrise and mga_sunset else None
     
-    ######################################################################
+        ###################################################
     def hhh(start_time, seconsd_per_hour, hour, round_minute = True):
         # כשאין זריחה או שקיעה אי אפשר לחשב שעות זמניות
         if start_time == None:
@@ -2237,8 +2197,8 @@ def main_halach_clock():
         # עיגול לדקה הקרובה אם רוצים
         total_seconds = int(AAA + 30) // 60 * 60 if round_minute else AAA
         time_value = time.gmtime(total_seconds)
-        return time.strftime("%H:%M" if round_minute else "%H:%M:%S", time_value)
-        ############################################################
+        return format_time(time_value, with_seconds=False if round_minute else True)
+        ##################################################
         
     
     zmanim = [
@@ -2340,9 +2300,9 @@ def main_halach_clock():
     current_screen_zmanim = (current_screen_zmanim + 0.15) % len(zmanim)
     
     # אם רוצים להדפיס זמנים במקום 
-    clocks = f"{equation_of_time_string} | {gm_time_now_string} | {lmt_string} | {local_solar_time_string} | {magrab_time}"
+    clocks = f"{equation_of_time_string} | {gm_time_now_string} | {local_mean_time_string} | {local_solar_time_string} | {magrab_time_string}"
     #canvas.itemconfig(hesberim_id, text=f"{CCC}") # אם במקום שורת ההסברים 
-    #canvas.itemconfig(zmanim_id, text=clocks) # אם במקום שורת הזמנים
+    canvas.itemconfig(zmanim_id, text=clocks) # אם במקום שורת הזמנים
     
     
     #############################################################################
