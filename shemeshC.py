@@ -1983,7 +1983,7 @@ hesberim_zmanim_clocks = "hesberim" # or "zmanim", or "clocks"
 # הפונקצייה הראשית שבסוף גם מפעילה את הנתונים על המסך
 def main_halach_clock():
                  
-    global location, last_location, last_location_date, last_location_riset
+    global location, last_location, last_location_date, last_location_offset_hours, last_location_riset
     # הצהרה על משתנים גלובליים ששומרים את הזמנים הדרושים
     global sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise
     global tset_hacochavim, misheiakir
@@ -2015,11 +2015,6 @@ def main_halach_clock():
         # מגדירים את משתנה המחלקה tim לזמן הרצוי. אם לא מגדירים אז הזמן הוא לפי הזמן הפנימי של הבקר או המחשב
         RiSet.tim = round(current_location_timestamp)
         
-        degs_for_rise_set = -0.833
-        degs_for_mga = -16
-        degs_for_tset_hacochavim = -4.61
-        degs_for_misheiacir = -10.5
-        
         # tlight_deg קובע כמה מעלות תחת האופק ייחשב דמדומים ואם לא מוגדר אז לא מחושב
         # riset_deg קובע כמה מעלות תחת האופק ייחשב זריחה ושקיעה ואם לא מוגדר אז מחושב -0.833 
         # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום אבל ממילא מוכרחים בסוף להגדיר riset.set_day(0) ואז יחושבו שוב
@@ -2039,9 +2034,10 @@ def main_halach_clock():
         sunrise, sunset, mga_sunrise, mga_sunset = riset.sunrise(1), riset.sunset(1), riset.tstart(1), riset.tend(1)
             
         ####################################
-        # עדכון המשתנים הגלובליים למיקום ולתאריך הנוכחי ולריסט המוגדר על היום הנוכחי
+        # עדכון המשתנים הגלובליים למיקום ולתאריך הנוכחי ולהפרש גריניץ הנוכחי ולריסט המוגדר על היום הנוכחי
         last_location = location
         last_location_date = current_location_date
+        last_location_offset_hours = location_offset_hours
         last_location_riset = riset
         ##########################################
         
