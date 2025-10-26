@@ -1967,10 +1967,11 @@ zmanim_id = canvas.create_text(160 * scale, 174 * scale, text="", fill="magenta"
 
 ######################################################################################################################3
 
-# שלושה משתנים מאוד חשובים ששומרים את המיקום הקודם והתאריך הקודם ואובייקט ריסט הקודם שהיו מוגדרים
+# ארבעה משתנים מאוד חשובים ששומרים את המיקום הקודם והתאריך הקודם והפרש מגריניץ הקודם ואובייקט ריסט הקודם שהיו מוגדרים
 # זה כדי שנתוני הזריחות והשקיעות יחושבו שוב רק אם השתנה תאריך או מקום
 last_location = None
 last_location_date = None
+last_location_offset_hours = None
 last_location_riset = None
 
 degs_for_rise_set = -0.833 # מה גובה השמש בשעת זריחה ושקיעה. קובע לשעון שעה זמנית גרא ולהדפסת הזמנים
@@ -2001,9 +2002,9 @@ def main_halach_clock():
     # חישוב מה השעה הנוכחית בשבר עשרוני עבור חישובי גובה ואזימוט בהמשך הפונקצייה
     current_hour = (hour + (minute / 60) + (second / 3600)) - location_offset_hours
      
-    # במקרה שהתאריך השתנה או המיקום השתנה יש לחשב מחדש את הזריחות והשקיעות והכל ולהקים אובייקט ריסט שמחשב הכל
+    # במקרה שהתאריך השתנה או המיקום השתנה או שהשתנה שעון קיץ, יש לחשב מחדש את הזריחות והשקיעות והכל ולהקים אובייקט ריסט שמחשב הכל
     # בהפעלה ראשונה של התוכנה זה תמיד נכנס ללולאה הזו
-    if location != last_location or current_location_date != last_location_date:
+    if location != last_location or current_location_date != last_location_date or location_offset_hours != last_location_offset_hours:
         
         #print("location != last_location or current_location_date != last_location_date")
       
