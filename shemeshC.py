@@ -1311,7 +1311,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 
 # ========================================================
 # License: Personal Use Only  
-# This file (`main_shemesh_s3.py`) is licensed for **personal use only**.  
+# This file (`shemeshC.py`) is licensed for **personal use only**.  
 # You may **not** modify, edit, or alter this file in any way.  
 # Commercial use is strictly prohibited.  
 # If you wish to use this file for business or organizational purposes,  
@@ -1319,7 +1319,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "26/10/2025-C"
+VERSION = "31/10/2025-C"
 
 ######################################################################################################################
 
@@ -1334,6 +1334,8 @@ VERSION = "26/10/2025-C"
 # ובורא עולם תכנן שהפין שבחרתי להלחים עבור השעון החיצוני שזה פין 17 נשאר פעיל גם במהלך שינה עמוקה. זה טוב מאוד כי השעון החיצוני צריך למדוד טמפרטורה בשביל להיות מדוייק
 
 import time, math, os, platform
+import json as ujson # בכוונה ujson כי זה מה שיש במיקרופייתון ורציתי שהפונקצייות יהיה מקבילות
+from platformdirs import user_data_dir # לדעת איפה לשמור הגדרות קובץ הגדרות בתיקיית המשתמש
 from math import sin, cos, tan, radians, degrees
 import gc # חשוב נורא לניקוי הזיכרון
 #from sun_moon_sgb import RiSet  # ספריית חישובי שמש
@@ -1695,69 +1697,76 @@ locations = [
 
 
 
-#  ההסברים מורכבים משני חלקים כל אחד: הסבר וערך. ההסבר עובר בסוף רוורס ולכן אם יש בו מספרים חייבים לעשות להם רוורס כאן כדי שהרוורס הסופי יישר אותם 
-esberim = [
+# לדברים באנגלית ולמספרים חייבים לעשות רוורס כאן כדי שהרוורס הסופי שעושים אחר כך יישר אותם 
+hesberim = [
+        
+        [f"ליציאה: במקלדת - אסקייפ, בעכבר - לחצן אמצעי"],
+        [f"שעון ההלכה גרסה: {reverse(VERSION)}"],
+        [" מאת: שמחה גרשון בורר - כוכבים וזמנים"],
+        [f'{reverse("sgbmzm@gmail.com")}'],
+        ["כל הזכויות שמורות - להלן הסברים"],
+        
+        ["החלפת מיקום: במקלדת - חיצים, בעכבר - גלילה"],
+        ["שיפט+חץ ימין: קביעת מיקום ברירת מחדל"],
+        ["חץ למעלה: חזרה למיקום ברירת מחדל"],
+        
+        ["שורת הסברים ומידע - שורה תחתונה"],
+        ["שורת זמנים מעוגלים בשעון רגיל - וכן שעונים כדלהלן"],
+        ["גריניץ  |  מקומי  |  מקומי-ממוצע  |  זמן-מהשקיעה"],
+        
+        
+        #["לחצן תחתון: הדלקה וכיבוי"],
+        #["לחצן עליון: ביצוע פעולות כדלהלן"],
+        #["לחיצה קצרה: שינוי מיקום"],
+        #["לחיצה מתמשכת: תפריט הגדרות"],
+        #["הדלקה בשני הלחצנים: עדכון תוכנה"],
+
+        [f"כשהשעון מכוון: דיוק הזמנים {reverse('10')} שניות"],
+        
+        [" התאריך העברי מתחלף בשקיעה"],
+        
+        [" מתחת גרא/מגא:  דקות בשעה זמנית"],
+        [" מתחת שמש/ירח:  אזימוט שמש/ירח"],
+        ["אזימוט = מעלות מהצפון, וכדלהלן"],
+        [f"צפון={reverse('0/360')}, מז={reverse('90')}, ד={reverse('180')}, מע={reverse('270')}"],
+        ["  שלב הירח במסלולו החודשי - באחוזים"],
+        [f"מולד={reverse('0/100')}, ניגוד={reverse('50')}, רבעים={reverse('25/75')}"],
     
-        ["ליציאה לחצו במקלדת על",f"Esc"],
-        ["או לחצו בעכבר על לחצן אמצעי",""],
-        ["מעבר בין מיקומים בחיצים ימין ושמאל", ""],
-        ["או באמצעות גלילה בעכבר", ""],
-        ["שיפט+חץ ימין: קביעת מיקום ברירת מחדל", ""],
-        ["חץ למעלה: חזרה למיקום ברירת מחדל", ""],
+        ["רשימת זמני היום בשעות זמניות"],
+        ["זריחה ושקיעה: "+reverse('00:00')],
+        ["סוף שמע ביום/רבע הלילה: "+reverse('03:00')],
+        ["  סוף תפילה ביום/שליש הלילה: "+reverse('04:00')],
+        [f"חצות יום ולילה: "+reverse('06:00')],
+        ["מנחה: גדולה - "+reverse('06:30')+", קטנה - "+reverse('09:30')],
+        ["פלג המנחה: "+reverse('10:45')],
         
-        ["שעון ההלכה גרסה",f"{VERSION}"],
-        [" מאת: שמחה גרשון בורר - כוכבים וזמנים",""],
-        [reverse("sgbmzm@gmail.com"), ""],
-        ["כל הזכויות שמורות - להלן הסברים", ""],
+        ["זמנים נוספים בשעות זמניות"],
+        ["להימנע מסעודה בערב שבת: "+reverse('09:00')],
+        ["סוף אכילת חמץ: "+reverse('04:00')+", שריפה: "+reverse('05:00')],
         
-        [f"כשהשעון מכוון: דיוק הזמנים {reverse('10')} שניות", ""],
-        
-        [" התאריך העברי מתחלף בשקיעה", ""],
-        
-        [" מתחת גרא/מגא:  דקות בשעה זמנית", ""],
-        [" מתחת שמש/ירח:  אזימוט שמש/ירח", ""],
-        ["אזימוט = מעלות מהצפון, וכדלהלן", ""],
-        [f"צפון={reverse('0/360')}, מז={reverse('90')}, ד={reverse('180')}, מע={reverse('270')}", ""],
-        ["  שלב הירח במסלולו החודשי - באחוזים", ""],
-        [f"מולד={reverse('0/100')}, ניגוד={reverse('50')}, רבעים={reverse('25/75')}", ""],
-    
-        ["רשימת זמני היום בשעות זמניות", ""],
-        ["זריחה ושקיעה במישור", "00:00"],
-        ["סוף שמע ביום/רבע הלילה", "03:00"],
-        ["  סוף תפילה ביום/שליש הלילה", "04:00"],
-        ["חצות יום ולילה", "06:00"],
-        ["מנחה גדולה", "06:30"],
-        ["מנחה קטנה", "09:30"],
-        ["פלג המנחה", "10:45"],
-        [f"מגא מחושב לפי {reverse('-16°')} בבוקר ובערב", ""],
-        
-        ["   זמנים במעלות כשהשמש תחת האופק", ""],
-        ["זריחת ושקיעת מרכז השמש", "0.0°"],
-        ["  זריחה ושקיעה במישור", "-0.833°"],
+        ["   זמנים במעלות כשהשמש תחת האופק"],
+        [f"זריחת ושקיעת מרכז השמש: {reverse('0.0°')}"],
+        [f"  זריחה ושקיעה במישור: {reverse('-0.833°')}"],
         
         [f"זמני צאת הכוכבים {reverse('3/4')} מיל במעלות", ""],
-        [f"לפי מיל של {reverse('18')} דקות", "-3.65°"],
-        [f"לפי מיל של {reverse('22.5')} דקות", "-4.2°"],
-        [f"לפי מיל של {reverse('24')} דקות", "-4.61°"],
-        ["צאת כוכבים קטנים רצופים", "-6.3°"],
+        [f"לפי מיל של {reverse('18')} דקות: {reverse('-3.65°')}"],
+        [f"לפי מיל של {reverse('22.5')} דקות: {reverse('-4.2°')}"],
+        [f"לפי מיל של {reverse('24')} דקות: {reverse('-4.61°')}"],
+        [f"צאת כוכבים קטנים רצופים: {reverse('-6.3°')}"],
         
-        ["  מעלות: עלות השחר/צאת כוכבים דרת", ""],
-        [f"לפי 4 מיל של {reverse('18')} דקות", "-16.02°"],
-        [f"לפי 4 מיל של {reverse('22.5')} דקות", "-19.75°"],
-        [f"לפי 5 מיל של {reverse('24')} דקות", "-25.8°"],
-        ["משיכיר/תחילת ציצית ותפילין", "-10.5°"],
+        ["  עלות השחר/צאת כוכבים דרת: במעלות"],
+        [f"לפי 4 מיל של {reverse('18')} דקות: {reverse('-16.02°')}"],
+        [f"לפי 4 מיל של {reverse('22.5')} דקות: {reverse('-19.75°')}"],
+        [f"לפי 5 מיל של {reverse('24')} דקות: {reverse('-25.8°')}"],
         
-        
-        ["זמנים נוספים", ""],
-        ["להימנע מסעודה בערב שבת", "09:00"],
-        ["סוף אכילת חמץ", "04:00"],
-        ["סוף שריפת חמץ", "05:00"],
+        [f"משיכיר/תחילת ציצית ותפילין: {reverse('-10.5°')}"],
 
         
-        ["להלן תנאי מינימום לראיית ירח ראשונה", ""],
-        [f"שלב {reverse('3%')}; והפרש גובה שמש-ירח {reverse('8°')}", ""],
+        ["להלן תנאי מינימום לראיית ירח ראשונה"],
+        [f"שלב {reverse('3%')}; והפרש גובה שמש-ירח {reverse('8°')}"],
     
-    ]
+    ]  
+
 
 # פונקצייה שמחזירה את השעה במיקום שבו נמצאים כרגע כחותמת זמן
 def get_current_location_timestamp(manual_time = False):
@@ -1779,44 +1788,81 @@ def get_current_location_timestamp(manual_time = False):
 
 
 ########################################################################################3
-# פונקציות לטיפול במיקומים
-# פונקצייה שמחזירה את המיקום במחשב שבו שומרים את הקובץ של מיקום ברירת המחדל
-def get_settings_path():
-    
-    APP_NAME = "Halacha_watch"
-    
-    if platform.system() == "Windows":
-        base_dir = os.getenv("LOCALAPPDATA")
-    else:
-        base_dir = os.path.expanduser("~/.config")
 
-    config_dir = os.path.join(base_dir, APP_NAME)
-    os.makedirs(config_dir, exist_ok=True)
-    return os.path.join(config_dir, "hw_default_location_index.txt")
+settings_dict = {
+    "rise_set_deg": -0.833, #-0.833 # מה גובה השמש בשעת זריחה ושקיעה. קובע לשעון שעה זמנית גרא ולהדפסת הזמנים
+    "mga_deg": -16, # מה גובה השמש בשעת עלות השחר וצאת הכוכבים דרת. קובע לשעון שעה זמנית מגא ולהדפסת הזמנים
+    "hacochavim_deg": -4.61, # מה גובה השמש בשעת צאת הכוכבים לשיטת הגאונים. קובע להדפסת הזמנים
+    "misheiacir_deg": -10.5, # מה גובה השמש בשעת משיכיר. קובע להדפסת הזמנים
+    "hesberim_mode": "hesberim", # "hesberim" or "zmanim", or "clocks"
+    "default_location_index": 26, # מה מיקום ברירת המחדל שמוגדר. כרגע 26 זה ירושלים.
+}
+
+
+# נתיב לתיקיית הנתונים של קבצים הדרושים לתוכנה
+halacha_watch_dir_path = user_data_dir(appname="halacha_watch", appauthor=False, roaming=False)
+# יצירת התיקייה אם לא קיימת ולא תהיה שגיאה אם כן קיימת
+os.makedirs(halacha_watch_dir_path, exist_ok=True)
+# שם ונתיב לקובץ ההגדרות של שעון ההלכה. חשוב מאוד לכל הקוד
+settings_file_path = os.path.join(halacha_watch_dir_path, "hw_settings.json")
+
+# פונקצייה מאוד חשובה לטעינת כל ההגדרות של שעון ההלכה מתוך קובץ ההגדרות
+def load_sesings_dict_from_file():
+    global settings_dict, settings_file_path
+    try:
+        with open(settings_file_path, "r") as f:
+            loaded_settings = ujson.load(f)
+            # עדכון ההגדרות הקיימות עם הערכים מהקובץ כך שלא מאבדים ערכים שלא נמצאים בקובץ
+            settings_dict.update(loaded_settings)
+            #settings_dict = loaded_settings
+            print(settings_dict)
+            print("הגדרות נטענו בהצלחה מתוך הקובץ")
+    except Exception as e:
+        print(f"שגיאה בטעינת הקובץ: {e}")
+
+load_sesings_dict_from_file() # טעינת ההגרות פעם אחת בתחילת הקוד
+
 
 # פונקצייה לשמירת מיקום ברירת המחדל
 def save_default_location_index(event=None):
     # הכרזה על משתנים גלובליים שיטופלו בלחיצה על הכפתור
-    global location_index
-    global location
-    path = get_settings_path()
+    
+    global settings_dict, settings_file_path, location, location_index
+    # עדכון כל ההגדרות החדשות במשתנה המילון הכללי של ההגדרות 
+    setting_location = {"default_location_index": location_index}
+    settings_dict.update(setting_location)
+    # בקשת אישור לשמירת מיקום ברירת מחדל 
     answer = messagebox.askyesno(reverse("אישור"), reverse(f"האם לשמור את '{location['heb_name']}' כמיקום ברירת מחדל?"))
     if answer:
         try:
-            with open(path, "w") as f:
-                f.write(str(location_index))
+            # כל ההגדרות המעודכנות לקובץ JSON
+            with open(settings_file_path, "w") as f:
+                ujson.dump(settings_dict, f)
                 messagebox.showinfo(reverse("אישור"), reverse(f"מיקום ברירת מחדל הוגדר בהצלחה: {location['heb_name']}"))
         except Exception as e:
             messagebox.showinfo(reverse("שגיאה"), f"{e}")
 
-# פונקצייה לקריאת מיקום ברירת המחדל מתוך הקובץ
-def load_default_location_index():
-    path = get_settings_path()
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return int(f.read())
-    else:
-        return 0  # ברירת מחדל אם הקובץ לא קיים
+# הגדרת משתנה גלובלי חשוב מאוד שקובע מה המיקום הנוכחי שעליו מתבצעים החישובים
+# משתנה זה נקבע לפי המיקום האינדקסי ששמור בקובץ מיקום ברירת מחדל תוך בדיקה שהאינדקס לא חורג מגבולות הרשימה ואם כן חורג אז יוגדר המיקום האפס כברירת מחדל
+# קריאת המיקום מתוך הרשימה בהתאם למספר שבקובץ
+default_index = None
+location = None 
+# אינדקס המיקום הנוכחי משתנה גלובלי חשוב מאוד לצורך התקדמות ברשימת המיקומים
+# הגדרה שלו על אפס גורמת שכל דפדוף ברשימת המיקומים יתחיל מהתחלה ולא ימשיך מהמיקום האינדקסי של מיקום ברירת המחדל
+location_index = None
+
+# פונקצייה שמחזירה את מיקום ברירת המחדל להיות המיקום הנוכחי
+def go_to_default_location():
+    # הצהרה על משתנים גלובליים
+    global location, location_index
+    # מחזיר את המיקום הנוכחי להיות מיקום ברירת מחדל
+    default_index = settings_dict["default_location_index"]
+    location = locations[default_index] if 0 <= default_index < len(locations) else locations[0]
+    # מאפס את המיקום שאוחזים בו בדפדוף ברשימת המיקומים כך שהדפדוף הבא יתחיל מהתחלה ולא מהמיקום האינדקסי של מיקום ברירת המחדל
+    location_index = 0
+    
+go_to_default_location() # קריאה פעם אחת בתחילת הקוד 
+
 
 # פונקצייה להחלפת מיקום
 def switch_location(event=None):
@@ -1828,39 +1874,6 @@ def switch_location(event=None):
         location_index = (location_index - 1) % len(locations)
 
     location = locations[location_index]
-    
-
-# פונקצייה שמקפיצה בחזרה את התוכנה להיות על מיקום ברירת המחדל
-def go_to_default_location(event=None):
-    # הצהרה על משתנים גלובליים
-    global location, location_index
-    # מחזיר את המיקום הנוכחי להיות מיקום ברירת מחדל
-    default_index = load_default_location_index()
-    location = locations[default_index] if 0 <= default_index < len(locations) else locations[0]
-    # מאפס את המיקום שאוחזים בו בדפדוף ברשימת המיקומים כך שהדפדוף הבא יתחיל מהתחלה ולא מהמיקום האינדקסי של מיקום ברירת המחדל
-    location_index = 0
-
-    
-# הגדרת משתנה גלובלי חשוב מאוד שקובע מה המיקום הנוכחי שעליו מתבצעים החישובים
-# משתנה זה נקבע לפי המיקום האינדקסי ששמור בקובץ מיקום ברירת מחדל תוך בדיקה שהאינדקס לא חורג מגבולות הרשימה ואם כן חורג אז יוגדר המיקום האפס כברירת מחדל
-# קריאת המיקום מתוך הרשימה בהתאם למספר שבקובץ
-default_index = load_default_location_index()
-location = locations[default_index] if 0 <= default_index < len(locations) else locations[0] 
-# אינדקס המיקום הנוכחי משתנה גלובלי חשוב מאוד לצורך התקדמות ברשימת המיקומים
-# הגדרה שלו על אפס גורמת שכל דפדוף ברשימת המיקומים יתחיל מהתחלה ולא ימשיך מהמיקום האינדקסי של מיקום ברירת המחדל
-location_index = 0
-
-##############################################################################################
-
-
-# משתנה לשליטה על איזה נתונים יוצגו בהסברים במסך של שעון ההלכה בכל שנייה
-current_screen_halach_clock = 0.0  #
-
-# משתנה לשליטה אלו נתונים יוצגו בשורת הזמנים 
-current_screen_zmanim = 0
-
-# מונה לדעת מתי ללחוץ לחיצה ווירטואלית על שיפט כדי למנוע כיבוי מסך
-counter_shift = 0.0
 
 ###########################################################################################################3
 
@@ -1932,11 +1945,11 @@ heb_date_id = canvas.create_text(160 * scale, 30 * scale, text="", fill="white",
 canvas.create_line(0, 45 * scale, screen_width, 45 * scale, fill="yellow")
 
 # איזור שעה זמנית גרא ומגא
-canvas.create_text(300 * scale, 55 * scale, text=reverse("גרא"), fill="white", font=scaled_font("miriam", 13))
+gra_id = canvas.create_text(300 * scale, 55 * scale, text=reverse("גרא"), fill="white", font=scaled_font("miriam", 13))
 minutes_in_gra_temporal_hour_id = canvas.create_text(300 * scale, 70 * scale, text="", fill="turquoise", font=scaled_font("miriam", 13))
 gra_temporal_hour_id = canvas.create_text(210 * scale, 64 * scale, text="", fill=hw_green, font=scaled_font("miriam", 30, "bold"))
 
-canvas.create_text(120 * scale, 55 * scale, text=reverse("מגא"), fill="white", font=scaled_font("miriam", 13))
+mga_id = canvas.create_text(120 * scale, 55 * scale, text=reverse("מגא"), fill="white", font=scaled_font("miriam", 13))
 minutes_in_mga_temporal_hour_id = canvas.create_text(120 * scale, 70 * scale, text="", fill="turquoise", font=scaled_font("miriam", 13))
 mga_temporal_hour_id = canvas.create_text(53 * scale, 64 * scale, text="", fill=hw_green, font=scaled_font("miriam", 18, "bold"))
 canvas.create_line(0, 80 * scale, screen_width, 80 * scale, fill="yellow")
@@ -1952,39 +1965,42 @@ moon_alt_id = canvas.create_text(53 * scale, 93 * scale, text="", fill=hw_green,
 moon_phase_id = canvas.create_text(45 * scale, 111 * scale, text="", fill="turquoise", font=scaled_font("miriam", 15, "bold"))
 canvas.create_line(0, 120 * scale, screen_width, 120 * scale, fill="yellow")
 
-# איזור הסברים מתחלף
-hesberim_id = canvas.create_text(160 * scale, 132 * scale, text="", fill="white", font=scaled_font("miriam", 14))
+# איזור מתחלף: זמנים בשעון רגיל ושעונים נוספים
+zmanim_with_clocks_id = canvas.create_text(160 * scale, 132 * scale, text="", fill="white", font=scaled_font("miriam", 14))
 canvas.create_line(0, 143 * scale, screen_width, 143 * scale, fill="yellow")
 
+
 # איזור שעון רגיל ותאריך לועזי ואיזור הזמן
-utc_offset_id = canvas.create_text(270 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
-time_id = canvas.create_text(180 * scale, 157 * scale, text="", fill=hw_green, font=scaled_font("miriam", 20, "bold"))
-greg_date_id = canvas.create_text(65 * scale, 157 * scale, text="", fill="white", font=scaled_font("miriam", 18))
+utc_offset_id = canvas.create_text(270 * scale, 156 * scale, text="", fill="white", font=scaled_font("miriam", 18))
+time_id = canvas.create_text(180 * scale, 156 * scale, text="", fill=hw_green, font=scaled_font("miriam", 20, "bold"))
+greg_date_id = canvas.create_text(65 * scale, 156 * scale, text="", fill="white", font=scaled_font("miriam", 18))
 canvas.create_line(0, 166 * scale, screen_width, 166 * scale, fill="yellow")
 
-# איזור שקיים רק במחשב ולא בשעון ההלכה הפיזי שמציג זמני הלכה קשיחים בשעון רגיל
-zmanim_id = canvas.create_text(160 * scale, 174 * scale, text="", fill="magenta", font=scaled_font("miriam", 10))
+# איזור מתחלף שקיים רק במחשב ולא בשעון ההלכה הפיזי ומיוע להצגת הסברים או אינורמציה אחרת
+info_id = canvas.create_text(160 * scale, 174 * scale, text="", fill="magenta", font=scaled_font("miriam", 10))
 
 ######################################################################################################################3
 
-# ארבעה משתנים מאוד חשובים ששומרים את המיקום הקודם והתאריך הקודם והפרש מגריניץ הקודם ואובייקט ריסט הקודם שהיו מוגדרים
-# זה כדי שנתוני הזריחות והשקיעות יחושבו שוב רק אם השתנה תאריך או מקום
-last_location = None
-last_location_date = None
-last_location_offset_hours = None
-last_location_riset = None
+# מונה לדעת מתי ללחוץ לחיצה ווירטואלית על שיפט כדי למנוע כיבוי מסך
+counter_shift = 0.0
 
-degs_for_rise_set = -0.833 # מה גובה השמש בשעת זריחה ושקיעה. קובע לשעון שעה זמנית גרא ולהדפסת הזמנים
-degs_for_mga = -16 # מה גובה השמש בשעת עלות השחר וצאת הכוכבים דרת. קובע לשעון שעה זמנית מגא ולהדפסת הזמנים
-degs_for_tset_hacochavim = -4.61 # מה גובה השמש בשעת צאת הכוכבים לשיטת הגאונים. קובע להדפסת הזמנים
-degs_for_misheiacir = -10.5 # מה גובה השמש בשעת משיכיר. קובע להדפסת הזמנים
-hesberim_zmanim_clocks = "hesberim" # or "zmanim", or "clocks"
+# משתנה לשליטה על איזה נתונים יוצגו בהסברים במסך של שעון ההלכה בכל שנייה
+
+# משתנה לשליטה אלו נתונים יוצגו בשורת הזמנים
+current_screen_hesberim = 0.0 
+current_screen_zmanim = 0.0
+current_screen_zmanim_with_clocks = 0.0
+
+# משתנים גלובליים
+last_state_for_rise_set_calculation = None  # כאן נשמור את מצב כל הנתונים בפעם האחרונה. אם משהו כאן משתנה צריך לחשב מחדש זריחות ושקיעות
+last_location_riset = None # עבור אובייקט שמחזיק את חישובי השמש הירח הזריחות והשקיעות
+
 
 # הפונקצייה הראשית שבסוף גם מפעילה את הנתונים על המסך
 def main_halach_clock():
                  
-    global location, last_location, last_location_date, last_location_offset_hours, last_location_riset
     # הצהרה על משתנים גלובליים ששומרים את הזמנים הדרושים
+    global last_state_for_rise_set_calculation, last_location_riset
     global sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise
     global tset_hacochavim, misheiakir
      
@@ -2001,24 +2017,32 @@ def main_halach_clock():
     
     # חישוב מה השעה הנוכחית בשבר עשרוני עבור חישובי גובה ואזימוט בהמשך הפונקצייה
     current_hour = (hour + (minute / 60) + (second / 3600)) - location_offset_hours
+    
+    # יצירת חתימה (state) של כל מה שחשוב לחישוב מחדש של זריחות ושקיעות
+    current_state_for_rise_set_calculation = (
+        location, # אם משתנה מיקום
+        current_location_date, # אם משתנה תאריך
+        location_offset_hours, # אם משתנה משעון קיץ לחורף או להיפך
+        settings_dict["rise_set_deg"], # אם משתנה גובה המעלות שמגדיר את השיטה
+        settings_dict["mga_deg"], # אם משתנה גובה המעלות שמגדיר את השיטה
+        settings_dict["hacochavim_deg"], # אם משתנה גובה המעלות שמגדיר את השיטה
+        settings_dict["misheiacir_deg"], # אם משתנה גובה המעלות שמגדיר את השיטה
+    )
      
-    # במקרה שהתאריך השתנה או המיקום השתנה או שהשתנה שעון קיץ, יש לחשב מחדש את הזריחות והשקיעות והכל ולהקים אובייקט ריסט שמחשב הכל
-    # בהפעלה ראשונה של התוכנה זה תמיד נכנס ללולאה הזו
-    if location != last_location or current_location_date != last_location_date or location_offset_hours != last_location_offset_hours:
-        
-        #print("location != last_location or current_location_date != last_location_date")
-      
+    # אם המצב השתנה — נחשב מחדש. בהפעלה הראשונה תמיד נכנס לכאן כי בתחילה הוגדר על None
+    if current_state_for_rise_set_calculation != last_state_for_rise_set_calculation:
+        print("שינוי בזיהוי — מחשב מחדש זריחות ושקיעות")
         # ריקון כל המשתנים כדי שלא ישתמשו בנתונים לא נכונים
         sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise = [None] * 8
         tset_hacochavim, misheiakir = [None] * 2
         
         # מגדירים את משתנה המחלקה tim לזמן הרצוי. אם לא מגדירים אז הזמן הוא לפי הזמן הפנימי של הבקר או המחשב
         RiSet.tim = round(current_location_timestamp)
-        
+          
         # tlight_deg קובע כמה מעלות תחת האופק ייחשב דמדומים ואם לא מוגדר אז לא מחושב
         # riset_deg קובע כמה מעלות תחת האופק ייחשב זריחה ושקיעה ואם לא מוגדר אז מחושב -0.833 
         # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום אבל ממילא מוכרחים בסוף להגדיר riset.set_day(0) ואז יחושבו שוב
-        riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= degs_for_rise_set, tlight_deg= degs_for_mga) # lto=location_offset_hours ####
+        riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg=settings_dict["rise_set_deg"], tlight_deg= settings_dict["mga_deg"]) # lto=location_offset_hours ####
         
         # הגדרת התאריך על היום הקודם ושמירת המידע הדרוש 
         riset.set_day(-1)
@@ -2033,22 +2057,19 @@ def main_halach_clock():
         riset.set_day(0)
         sunrise, sunset, mga_sunrise, mga_sunset = riset.sunrise(1), riset.sunset(1), riset.tstart(1), riset.tend(1)
             
-        ####################################
-        # עדכון המשתנים הגלובליים למיקום ולתאריך הנוכחי ולהפרש גריניץ הנוכחי ולריסט המוגדר על היום הנוכחי
-        last_location = location
-        last_location_date = current_location_date
-        last_location_offset_hours = location_offset_hours
-        last_location_riset = riset
-        ##########################################
-        
+        ##########################################################################
         # חישוב דמדומים נוספים עבור צאת הכוכבים או משיכיר את חבירו וכדומה באמצעות מופע מחלקה חדש
         # אני מנצל כאן את הגדרת גובה הזריחה והשקיעה וגובה הדמדומים ובמקום זה עושה את הגבהים המבוקשים עבורי
         # בכל מופע כזה אפשר לחשב 2 זמנים שלכל אחד מהם יש התחלה וסוף - וההתחלה זה זריחה והסוף זה שקיעה
         # אם השמש לא מגיעה לגובה המבוקש בתאריך ובמיקום המבוקש - זה מחזיר None
         # כאן לא צריך לחשב עבור היום הקודם אלא זה מידע ליממה הנוכחית. לכן לא צריך להגדיר riset1.set_day(0) כי זה קורה לבד
-        riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg= degs_for_tset_hacochavim, tlight_deg= degs_for_misheiacir)
+        riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg=settings_dict["hacochavim_deg"], tlight_deg=settings_dict["misheiacir_deg"])
         tset_hacochavim, misheiakir = riset1.sunset(1), riset1.tstart(1)
         ########################################################################
+        # עדכון המשתנים הגלובליים למיקום ולתאריך הנוכחי ולהפרש גריניץ הנוכחי ולריסט המוגדר על היום הנוכחי
+        last_location_riset = riset
+        last_state_for_rise_set_calculation = current_state_for_rise_set_calculation
+        ##########################################
         
    
     # בכל מקרה ריסט הוא הקודם שההיה בשימוש כדי לחסוך בחישובים מיותרים
@@ -2062,16 +2083,16 @@ def main_halach_clock():
     # לדעת את גובה השמש והירח אפשר גם במיקום שאין בו זריחות ושקיאות וזה לא מחזיר שגיאה אלא מחזיר None שזה כמו אפס
     s_alt, s_az, s_ra, s_dec = riset.alt_az_ra_dec(current_hour, sun=True)
     m_alt, m_az, m_ra, m_dec = riset.alt_az_ra_dec(current_hour, sun=False)
-    
+       
     # הדפסות לניסיון כשיש בעיות
     print_times = False
     if print_times:
-        print("sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(sunrise)))
-        print("sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(sunset)))
-        print("mga_sunrise",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunrise)))
-        print("mga_sunset", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(mga_sunset)))
-        print("misheiakir",time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(misheiakir)))
-        print("tset_hacochavim", time.strftime("%H:%M:%S %d/%m/%Y",time.gmtime(tset_hacochavim)))
+        print("sunrise",format_time(time.gmtime(sunrise), with_date=True))
+        print("sunset", format_time(time.gmtime(sunset), with_date=True))
+        print("mga_sunrise",format_time(time.gmtime(mga_sunrise), with_date=True))
+        print("mga_sunset", format_time(time.gmtime(mga_sunset), with_date=True))
+        print("misheiakir",format_time(time.gmtime(misheiakir), with_date=True))
+        print("tset_hacochavim", format_time(time.gmtime(tset_hacochavim), with_date=True))
         print("")
         
     ################## חישוב השעה הזמנית הנוכחית גרא ומגא  ##################
@@ -2199,35 +2220,41 @@ def main_halach_clock():
         
     
     zmanim = [
-        ["להלן זמני היום בשעון רגיל - בעיגול לדקה הקרובה"],
-        [f"עלות השחר {reverse('(16)')}:   {reverse(hhh(mga_sunrise, 0, 0))}   |   משיכיר {reverse('(10.5)')}:   {reverse(hhh(misheiakir, 0, 0))}"], 
-        [f"זריחה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
-        [f"סוף שמע:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
-        [f"סוף תפילה:   מגא {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))},   גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
+        #["זמנים בשעון רגיל - וכן שעונים כדלהלן"],
+        [f"עלות השחר: {reverse(hhh(mga_sunrise, 0, 0))}  |  משיכיר: {reverse(hhh(misheiakir, 0, 0))}"], 
+        [f"זריחה גרא: {reverse(hhh(sunrise, seconds_day_gra, hour=0))}"],
+        [f"סוף שמע: מגא - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=3))}, גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=3))}"], 
+        [f"סוף תפילה: מגא - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=4))}, גרא - {reverse(hhh(sunrise, seconds_day_gra, hour=4))}"],
         [f"חצות היום - וכנגדו בלילה: {reverse(hhh(sunrise, seconds_day_gra, hour=6))}"],
-        [f"מנחה:   גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))},   קטנה - {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))},   פלג - {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
-        [f"שקיעה מישורית:   {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
-        [f"צאת הכוכבים:   גאונים {reverse('(4.61)')} - {reverse(hhh(tset_hacochavim, 0, 0))},   רבינו-תם {reverse('(16)')} - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],        
+        [f"מנחה: גדולה - {reverse(hhh(sunrise, seconds_day_gra, hour=6.5))}, קטנה - {reverse(hhh(sunrise, seconds_day_gra, hour=9.5))}"],
+        [f"פלג המנחה - {reverse(hhh(sunrise, seconds_day_gra, hour=10.75))}"],
+        [f"שקיעה גרא: {reverse(hhh(sunrise, seconds_day_gra, hour=12))}"],
+        [f"כוכבים: גאונים - {reverse(hhh(tset_hacochavim, 0, 0))}, רת - {reverse(hhh(mga_sunrise, seconds_day_mga, hour=12))}"],
     ]
+    
+    ### הכנה לשורת שעונים. הרווחים הם בכוונה לצורך מירכוז בשעון ההלכה הפיזי
+    clocks_string = f"{magrab_time_string}  {local_mean_time_string}  {local_solar_time_string}  {gm_time_now_string}"
+    #clocks_string = f"גריניץ  |  מקומי  |  מקומי-ממוצע  |  מהשקיעה"
+    
+    # משתנה ששומר מערך זמנים שבו אחרי כל שורת זמן יש שורת שעונים וכך הזמנים והשעונים מוצגים לסירוגין
+    zmanim_with_clocks = [item for zman_line in zmanim for item in (zman_line, [reverse(clocks_string)])]
     
     ######################################################################################
     
     # מכאן והלאה ההדפסות למסך
     
-    #voltage_string = f"{round(voltage,1)}v"
     voltage_string = f"**%"
     
     greg_date_string = f'{day:02d}/{month:02d}/{year:04d}' 
     time_string = f'{hour:02d}:{minute:02d}:{second:02d}'
     
     # מהשקיעה עד 12 בלילה מוסיפים את המילה ליל כי היום בשבוע והתאריך העברי מקבלים לתאריך הלועזי של מחר
-    leil_string = reverse("ליל: ") if heb_date_is_next_greg_date else ""
+    leil_string = reverse("ליל:") if heb_date_is_next_greg_date else ""
     # אם אין שעון והוגדר זמן שרירותי או שהשעה נלקחה מהשעון הפנימי שכנראה אינו מדוייק מוסיפים סימני קריאה אחרי התאריך העברי
-    heb_date_to_print = f'{leil_string}{reverse(heb_weekday_string)}, {reverse(heb_date_string)}'
+    heb_date_to_print = f'{leil_string} {reverse(heb_weekday_string)}, {reverse(heb_date_string)}'
     # בלינוקס צריך לשנות את הסדר בגלל בעיית תצוגת עברית
     if not is_windows:
-        heb_date_to_print = f'{reverse(heb_date_string)} ,{reverse(heb_weekday_string)}{leil_string}'
-    #magrab_time = calculate_magrab_time(current_timestamp, sunset_timestamp) if sunrise else reverse("שגיאה  ") # רק אם יש זריחה ושקיעה אפשר לחשב
+        heb_date_to_print = f'{reverse(heb_date_string)} ,{reverse(heb_weekday_string)} {leil_string}'
     utc_offset_string = 'utc+00' if location_offset_hours == 0 else f'utc+{location_offset_hours:02}' if location_offset_hours >0 else f'utc-{abs(location_offset_hours):02}'
     coteret = f'{voltage_string} - {reverse("שעון ההלכה")} - {reverse(location["heb_name"])}*'
     # בלינוקס צריך לשנות את הסדר בגלל בעיית תצוגת עברית
@@ -2264,12 +2291,17 @@ def main_halach_clock():
 
     ####################################################################
     
-
+    # עדכון איזור תאריך עברי כולל צבע מתאים לימי חול ולשבתות וחגים
+    # צבע הטקסט והרקע של התאריך העברי: ביום חול לבן על שחור ובשבת וחג שחור על צהוב, ובחגים דרבנן כולל תעניות שחור על ציאן
     HEB_DATE_FG, HEB_DATE_BG  = ("black", "yellow") if is_shabat or holiday_name or shabat_before_motsaei_6 else ("black", "cyan") if lite_holiday_name or is_rosh_chodesh else ("white", "black")
     canvas.itemconfig(heb_date_rect_id, fill=HEB_DATE_BG)
     canvas.itemconfig(heb_date_id, text=heb_date_to_print, fill=HEB_DATE_FG)
-    
+       
     # עדכון שעה זמנית גרא ומגא ודקות בשעה זמנית לכל אחת מהשיטות
+    mga_string = "מגא!" if settings_dict["mga_deg"] != -16 else "מגא"
+    gra_string = "גרא!" if settings_dict["rise_set_deg"] != -0.833 else "גרא " 
+    canvas.itemconfig(mga_id, text=mga_string)
+    canvas.itemconfig(gra_id, text=gra_string)
     canvas.itemconfig(minutes_in_gra_temporal_hour_id, text=minutes_in_temporal_hour)
     canvas.itemconfig(gra_temporal_hour_id, text=temporal_time)
     canvas.itemconfig(minutes_in_mga_temporal_hour_id, text=minutes_in_mga_temporal_hour)
@@ -2282,24 +2314,25 @@ def main_halach_clock():
     canvas.itemconfig(moon_alt_id, text=f' {" " if m_alt > 0 else ""}{" " if abs(m_alt) <10 else ""}{m_alt:.3f}°')
     canvas.itemconfig(moon_phase_id, text=f'    {phase_percent:.1f}%')
     
-    # עדכון שורת ההסברים
-    global current_screen_halach_clock 
-    text = reverse(esberim[int(current_screen_halach_clock)][0])  # רוורס של הטקסט העברי
-    time_value = esberim[int(current_screen_halach_clock)][1]  # הערך להצגה
-    CCC = f"{time_value}  :{text}" if time_value != "" else f"{text}"
-    canvas.itemconfig(hesberim_id, text=f"{CCC}")
-    current_screen_halach_clock = (current_screen_halach_clock + 0.25) % len(esberim)  # זה גורם מחזור של שניות לאיזה נתונים יוצגו במסך
     
-    # עדכון שורת הזמנים
-    global current_screen_zmanim
-    SSS = reverse(zmanim[int(current_screen_zmanim)][0])
-    canvas.itemconfig(zmanim_id, text=SSS)
-    current_screen_zmanim = (current_screen_zmanim + 0.15) % len(zmanim)
     
-    # אם רוצים להדפיס זמנים במקום 
-    clocks = f"{equation_of_time_string} | {gm_time_now_string} | {local_mean_time_string} | {local_solar_time_string} | {magrab_time_string}"
-    #canvas.itemconfig(hesberim_id, text=f"{CCC}") # אם במקום שורת ההסברים 
-    canvas.itemconfig(zmanim_id, text=clocks) # אם במקום שורת הזמנים
+    global current_screen_hesberim, current_screen_zmanim, current_screen_zmanim_with_clocks
+    # הגדרת תוכן השורות: הסברים, זמנים, זמנים עם שעונים
+    hesberim_string = reverse(hesberim[int(current_screen_hesberim)][0])  # רוורס של הטקסט העברי
+    zmanim_string = reverse(zmanim[int(current_screen_zmanim)][0])
+    zmanim_with_clocks_string = reverse(zmanim_with_clocks[int(current_screen_zmanim_with_clocks)][0])
+    
+    # קידום בשלב אחד עבור הגדרת השרוה הבאה בסיבוב הבא
+    speed_step = 0.15 #מהירות ההחלפה כדלהלן: 0.15 = 6 שניות | 0.3 = 3 שניות | 0.45 = שנייה וחצי
+    current_screen_hesberim = (current_screen_hesberim + (speed_step * 2)) % len(hesberim)  # זה גורם מחזור של שניות לאיזה נתונים יוצגו במסך
+    current_screen_zmanim = (current_screen_zmanim + speed_step) % len(zmanim)
+    current_screen_zmanim_with_clocks = (current_screen_zmanim_with_clocks + speed_step) % len(zmanim_with_clocks)
+    
+    
+    # הדפסה לשורת זמנים ושעונים
+    canvas.itemconfig(zmanim_with_clocks_id, text=zmanim_with_clocks_string)
+    # הדפסה לשורת ההסברים והמידע
+    canvas.itemconfig(info_id, text=hesberim_string) # אם במקום שורת הזמנים
     
     
     #############################################################################
