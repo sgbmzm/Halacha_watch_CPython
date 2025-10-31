@@ -1319,7 +1319,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "31/10/2025-C"
+VERSION = "30/10/2025-C"
 
 ######################################################################################################################
 
@@ -1343,7 +1343,7 @@ import gc # חשוב נורא לניקוי הזיכרון
 #import mpy_heb_date # לחישוב תאריך עברי מתאריך לועזי. ספרייה שלי
 import tkinter as tk
 from tkinter import font
-from tkinter import messagebox
+from tkinter import messagebox, ttk, simpledialog
 
 # לצורך לחיצה מדומה על המקלדת כדי שהמסך לא ייכבה אוטומטית
 from pynput.keyboard import Controller as keyboard_Controller 
@@ -1700,19 +1700,17 @@ locations = [
 # לדברים באנגלית ולמספרים חייבים לעשות רוורס כאן כדי שהרוורס הסופי שעושים אחר כך יישר אותם 
 hesberim = [
         
-        [f"ליציאה: במקלדת - אסקייפ, בעכבר - לחצן אמצעי"],
+        ["לחצן אמצעי בעכבר - פותח תפריט חשוב"],
         [f"שעון ההלכה גרסה: {reverse(VERSION)}"],
         [" מאת: שמחה גרשון בורר - כוכבים וזמנים"],
         [f'{reverse("sgbmzm@gmail.com")}'],
         ["כל הזכויות שמורות - להלן הסברים"],
         
         ["החלפת מיקום: במקלדת - חיצים, בעכבר - גלילה"],
-        ["שיפט+חץ ימין: קביעת מיקום ברירת מחדל"],
-        ["חץ למעלה: חזרה למיקום ברירת מחדל"],
         
-        ["שורת הסברים ומידע - שורה תחתונה"],
         ["שורת זמנים מעוגלים בשעון רגיל - וכן שעונים כדלהלן"],
         ["גריניץ  |  מקומי  |  מקומי-ממוצע  |  זמן-מהשקיעה"],
+        ["שורת הסברים ומידע - שורה תחתונה"],
         
         
         #["לחצן תחתון: הדלקה וכיבוי"],
@@ -1807,7 +1805,7 @@ os.makedirs(halacha_watch_dir_path, exist_ok=True)
 settings_file_path = os.path.join(halacha_watch_dir_path, "hw_settings.json")
 
 # פונקצייה מאוד חשובה לטעינת כל ההגדרות של שעון ההלכה מתוך קובץ ההגדרות
-def load_sesings_dict_from_file():
+def load_settings_dict_from_file():
     global settings_dict, settings_file_path
     try:
         with open(settings_file_path, "r") as f:
@@ -1820,7 +1818,7 @@ def load_sesings_dict_from_file():
     except Exception as e:
         print(f"שגיאה בטעינת הקובץ: {e}")
 
-load_sesings_dict_from_file() # טעינת ההגרות פעם אחת בתחילת הקוד
+load_settings_dict_from_file() # טעינת ההגדרות פעם אחת בתחילת הקוד
 
 
 # פונקצייה לשמירת מיקום ברירת המחדל
@@ -1881,16 +1879,132 @@ def switch_location(event=None):
 
 root_hw = tk.Tk()
 root_hw.attributes('-fullscreen', True) # מסך מלא
-root_hw.configure(bg='black') # רקע שחור 
+root_hw.configure(bg='black') # רקע שחור
 
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+# תיאורים בעברית
+names_hebrew = {
+    "rise_set_deg": "שיטת זריחה ושקיעה",
+    "mga_deg": "שיטת מג\"א ועלות",
+    "hacochavim_deg": "שיטת כוכבים",
+    "misheiacir_deg": "שיטת משיכיר",
+    "hesberim_mode": "מצב תצוגה",
+}
+
+modes_hebrew = {
+    "hesberim": "הסברים",
+    "zmanim": "זמנים",
+    "clocks": "שעונים",
+    "zmanim_with_clocks": "זמנים עם שעונים",
+}
+
+
+def edit_settings():
+    edit_win = tk.Toplevel(root_hw)
+    edit_win.title("עריכת הגדרות")
+    edit_win.geometry("400x400")
+    ttk.Label(edit_win, text="עריכת הגדרות", font=("Arial", 14, "bold")).pack(pady=10)
+    
+    global settings_dict, settings_file_path  # נשתמש במשתנים הגלובליים
+    
+    options_to_edit = {
+    "rise_set_deg": [0, -0.833],
+    "mga_deg": [-16, -19.75],
+    "hacochavim_deg": [-4.61, -3.61, -6, -8.5],
+    "misheiacir_deg": [-10.5, -10],
+    "hesberim_mode": ["hesberim", "zmanim", "clocks", "zmanim_with_clocks"],
+    }
+
+    entries = {}
+    
+    #############################################
+    def save_changes():
+        # ניצור מילון זמני לשמירה
+        new_settings = {}
+        for key, widget in entries.items():
+            val = widget.get()
+            # אם הערך מספרי – נהפוך לפלואט, אם לא - נשאיר כטקסט
+            try:
+                val = float(val)
+            except ValueError:
+                pass
+            new_settings[key] = val
+        
+        # עדכון מילון ההגדרות הכללי בהגדרות החדשות
+        settings_dict.update(new_settings)
+        
+        # כל ההגדרות המעודכנות לקובץ JSON
+        with open(settings_file_path, "w") as f:
+            ujson.dump(settings_dict, f)
+            
+        messagebox.showinfo("נשמר", "ההגדרות נשמרו בהצלחה!")
+        
+        #load_settings_dict_from_file()
+        
+        edit_win.destroy()
+        ########################################
+
+    for key, val in settings_dict.items():
+        
+        # לדלג על הגדרות שלא רוצות שיוצגו
+        if key not in options_to_edit:
+            continue
+        
+        frame = ttk.Frame(edit_win)
+        frame.pack(fill="x", padx=10, pady=5)
+        ttk.Label(frame, text=names_hebrew.get(key, key), width=20).pack(side="right")
+        combo = ttk.Combobox(frame, values=options_to_edit.get(key, []))
+        combo.set(val)
+        combo.pack(side="right", padx=5)
+        entries[key] = combo
+
+    ttk.Button(edit_win, text="שמור", command=save_changes).pack(pady=20)
+
+# פונקציות הפעלה של התפריט
+def show_current_settings():
+    text = ""
+    for key, val in settings_dict.items():
+        if key == "hesberim_mode":
+            val = modes_hebrew.get(val, val)
+        text += f"{names_hebrew.get(key, key)}: {val}\n"
+    messagebox.showinfo(reverse("הגדרות נוכחיות"), reverse(text))
+
+def show_about():
+    messagebox.showinfo(
+        "אודות התוכנה",
+        f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי שמחה גרשון בורר\nכוכבים וזמנים\nsgbmzm@gmail.com"
+    )
+
+def save_default_location_index():
+    # כאן תממש את הקוד שלך לשמירת המיקום
+    messagebox.showinfo("שמירה", "המיקום הנוכחי נשמר כברירת מחדל.")
+
+def show_popup_menu(event):
+    
+    # יצירת התפריט
+    popup_menu = tk.Menu(root_hw, tearoff=0)
+    
+    # הוספת אפשרויות לחצנים לתפריט
+    popup_menu.add_command(label=reverse("הגדר מיקום נוכחי כברירת מחדל"), command=save_default_location_index)
+    popup_menu.add_command(label=reverse("חזרה למיקום ברירת מחדל"), command=go_to_default_location)
+    popup_menu.add_command(label=reverse("הצג הגדרות נוכחיות"), command=show_current_settings)
+    popup_menu.add_command(label=reverse("עריכת הגדרות"), command=edit_settings)
+    popup_menu.add_command(label=reverse("אודות התוכנה"), command=show_about)
+    popup_menu.add_command(label=reverse("כיבוי התוכנה"), command=root_hw.destroy)
+    
+    # הצגת התפריט במקום שבו לוחצים על המסך
+    popup_menu.tk_popup(event.x_root, event.y_root)
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
+    
 root_hw.bind("<Escape>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על אסקייפ
-root_hw.bind("<Button-2>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על לחצן אמצעי בעכבר
-
-root_hw.bind("<Shift-Right>", save_default_location_index) # שיפט וחץ ימינה שומרים מיקום ברירת מחדל
+root_hw.bind("<Button-2>", show_popup_menu) # הצגת תפריט בלחיצה על לחצן אמצעי בעכבר
 
 root_hw.bind("<Right>", switch_location) # חץ ימינה מחליף מיקום
 root_hw.bind("<Left>", switch_location) # חץ שמאלה מחליף מיקום
-root_hw.bind("<Up>", go_to_default_location) # חץ למעלה מחזיר למיקום ברירת המחדל
+#root_hw.bind("<Up>", go_to_default_location) # חץ למעלה מחזיר למיקום ברירת המחדל
 
 #root_hw.bind("<Button-1>", switch_location) # לחצן שמאלי בעכבר מחליף מיקום
 #root_hw.bind("<Button-3>", switch_location) # לחצן ימני בעכבר מחליף מיקום
