@@ -1886,18 +1886,18 @@ root_hw.configure(bg='black') # רקע שחור
 
 # תיאורים בעברית
 names_hebrew = {
-    "rise_set_deg": "שיטת זריחה ושקיעה",
-    "mga_deg": "שיטת מג\"א ועלות",
-    "hacochavim_deg": "שיטת כוכבים",
-    "misheiacir_deg": "שיטת משיכיר",
-    "hesberim_mode": "מצב תצוגה",
+    "rise_set_deg": reverse("שיטת זריחה ושקיעה"),
+    "mga_deg": reverse("שיטת מג\"א ועלות"),
+    "hacochavim_deg": reverse("שיטת כוכבים"),
+    "misheiacir_deg": reverse("שיטת משיכיר"),
+    "hesberim_mode": reverse("מצב תצוגה"),
 }
 
 modes_hebrew = {
-    "hesberim": "הסברים",
-    "zmanim": "זמנים",
-    "clocks": "שעונים",
-    "zmanim_with_clocks": "זמנים עם שעונים",
+    "hesberim": reverse("הסברים"),
+    "zmanim": reverse("זמנים"),
+    "clocks": reverse("שעונים"),
+    "zmanim_with_clocks": reverse("זמנים עם שעונים"),
 }
 
 
@@ -1905,7 +1905,7 @@ def edit_settings():
     edit_win = tk.Toplevel(root_hw)
     edit_win.title("עריכת הגדרות")
     edit_win.geometry("400x400")
-    ttk.Label(edit_win, text="עריכת הגדרות", font=("Arial", 14, "bold")).pack(pady=10)
+    ttk.Label(edit_win, text=reverse("עריכת הגדרות"), font=("Arial", 14, "bold")).pack(pady=10)
     
     global settings_dict, settings_file_path  # נשתמש במשתנים הגלובליים
     
@@ -1973,13 +1973,13 @@ def show_current_settings():
 
 def show_about():
     messagebox.showinfo(
-        "אודות התוכנה",
-        f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי שמחה גרשון בורר\nכוכבים וזמנים\nsgbmzm@gmail.com"
+        reverse("אודות התוכנה"),
+        reverse(f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי שמחה גרשון בורר\nכוכבים וזמנים\nsgbmzm@gmail.com")
     )
 
 def save_default_location_index():
     # כאן תממש את הקוד שלך לשמירת המיקום
-    messagebox.showinfo("שמירה", "המיקום הנוכחי נשמר כברירת מחדל.")
+    messagebox.showinfo(reverse("שמירה"), reverse("המיקום הנוכחי נשמר כברירת מחדל."))
 
 def show_popup_menu(event):
     
@@ -2098,9 +2098,7 @@ info_id = canvas.create_text(160 * scale, 174 * scale, text="", fill="magenta", 
 # מונה לדעת מתי ללחוץ לחיצה ווירטואלית על שיפט כדי למנוע כיבוי מסך
 counter_shift = 0.0
 
-# משתנה לשליטה על איזה נתונים יוצגו בהסברים במסך של שעון ההלכה בכל שנייה
-
-# משתנה לשליטה אלו נתונים יוצגו בשורת הזמנים
+# משתנים לשליטה בתצוגת השורות המוחלפות
 current_screen_hesberim = 0.0 
 current_screen_zmanim = 0.0
 current_screen_zmanim_with_clocks = 0.0
@@ -2412,8 +2410,8 @@ def main_halach_clock():
     canvas.itemconfig(heb_date_id, text=heb_date_to_print, fill=HEB_DATE_FG)
        
     # עדכון שעה זמנית גרא ומגא ודקות בשעה זמנית לכל אחת מהשיטות
-    mga_string = "מגא!" if settings_dict["mga_deg"] != -16 else "מגא"
-    gra_string = "גרא!" if settings_dict["rise_set_deg"] != -0.833 else "גרא " 
+    mga_string = reverse("מגא!") if settings_dict["mga_deg"] != -16 else reverse("מגא")
+    gra_string = reverse("גרא!") if settings_dict["rise_set_deg"] != -0.833 else reverse("גרא ") 
     canvas.itemconfig(mga_id, text=mga_string)
     canvas.itemconfig(gra_id, text=gra_string)
     canvas.itemconfig(minutes_in_gra_temporal_hour_id, text=minutes_in_temporal_hour)
@@ -2442,6 +2440,12 @@ def main_halach_clock():
     current_screen_zmanim = (current_screen_zmanim + speed_step) % len(zmanim)
     current_screen_zmanim_with_clocks = (current_screen_zmanim_with_clocks + speed_step) % len(zmanim_with_clocks)
     
+    '''
+    # קביעה מה יודפס בשורת ההסברים: האם שעונים זמנים או הסברים. ולאחר מכן הדפסה למסך של מה שנבחר   
+    hesberim_zmanim_clocks = settings_dict["hesberim_mode"]
+    hesberim_zmanim_clocks_options_dict = {"zmanim": zmanim_string,"clocks": clocks_string,"zmanim_with_clocks": zmanim_with_clocks_string}
+    print_in_hesberim_line = hesberim_zmanim_clocks_options_dict.get(hesberim_zmanim_clocks, hesberim_string) # ערך ברירת המחדל הוא הסברים 
+    '''
     
     # הדפסה לשורת זמנים ושעונים
     canvas.itemconfig(zmanim_with_clocks_id, text=zmanim_with_clocks_string)
