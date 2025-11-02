@@ -283,8 +283,16 @@ class RiSet:
     # ***** API start *****
     # Examine Julian dates either side of current one to cope with localtime.
     # 707μs on RP2040 at standard clock and with local time == UTC
-    def set_day(self, day: int = 0):
+    def set_day(self, day: int = 0, update_times = True):
         mjd = get_mjd(day)
+        ####################
+        #This updates the current day, but without the times.
+        #In this case set_day(0) will no longer calculate sunrises and sunsets unless we first change the day. Such as set_day(1).
+        if not update_times:
+            self.mjd = mjd
+            self._times = [None] * 6 # כדי לרוקן זמני זריחות ושקיעות שנכונים ליום אחר ולא ליום הנוכחי
+            return self
+        ###################
         if self.mjd is None or self.mjd != mjd:
             spd = 86400  # Secs per day
             # ._t0 is time of midnight (local time) in secs since MicroPython epoch
@@ -1319,7 +1327,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "30/10/2025-C"
+VERSION = "C-02/11/2025"
 
 ######################################################################################################################
 
@@ -1712,28 +1720,21 @@ hesberim = [
         ["גריניץ  |  מקומי  |  מקומי-ממוצע  |  זמן-מהשקיעה"],
         ["שורת הסברים ומידע - שורה תחתונה"],
         
-        
-        #["לחצן תחתון: הדלקה וכיבוי"],
-        #["לחצן עליון: ביצוע פעולות כדלהלן"],
-        #["לחיצה קצרה: שינוי מיקום"],
-        #["לחיצה מתמשכת: תפריט הגדרות"],
-        #["הדלקה בשני הלחצנים: עדכון תוכנה"],
-
         [f"כשהשעון מכוון: דיוק הזמנים {reverse('10')} שניות"],
         
-        [" התאריך העברי מתחלף בשקיעה"],
+        ["התאריך העברי מתחלף בשקיעה"],
         
-        [" מתחת גרא/מגא:  דקות בשעה זמנית"],
-        [" מתחת שמש/ירח:  אזימוט שמש/ירח"],
+        ["מתחת גרא/מגא:  דקות בשעה זמנית"],
+        ["מתחת שמש/ירח:  אזימוט שמש/ירח"],
         ["אזימוט = מעלות מהצפון, וכדלהלן"],
         [f"צפון={reverse('0/360')}, מז={reverse('90')}, ד={reverse('180')}, מע={reverse('270')}"],
-        ["  שלב הירח במסלולו החודשי - באחוזים"],
+        ["שלב הירח במסלולו החודשי - באחוזים"],
         [f"מולד={reverse('0/100')}, ניגוד={reverse('50')}, רבעים={reverse('25/75')}"],
     
         ["רשימת זמני היום בשעות זמניות"],
         ["זריחה ושקיעה: "+reverse('00:00')],
         ["סוף שמע ביום/רבע הלילה: "+reverse('03:00')],
-        ["  סוף תפילה ביום/שליש הלילה: "+reverse('04:00')],
+        ["סוף תפילה ביום/שליש הלילה: "+reverse('04:00')],
         [f"חצות יום ולילה: "+reverse('06:00')],
         ["מנחה: גדולה - "+reverse('06:30')+", קטנה - "+reverse('09:30')],
         ["פלג המנחה: "+reverse('10:45')],
@@ -1742,7 +1743,7 @@ hesberim = [
         ["להימנע מסעודה בערב שבת: "+reverse('09:00')],
         ["סוף אכילת חמץ: "+reverse('04:00')+", שריפה: "+reverse('05:00')],
         
-        ["   זמנים במעלות כשהשמש תחת האופק"],
+        ["זמנים במעלות כשהשמש תחת האופק"],
         [f"זריחת ושקיעת מרכז השמש: {reverse('0.0°')}"],
         [f"  זריחה ושקיעה במישור: {reverse('-0.833°')}"],
         
@@ -1752,7 +1753,7 @@ hesberim = [
         [f"לפי מיל של {reverse('24')} דקות: {reverse('-4.61°')}"],
         [f"צאת כוכבים קטנים רצופים: {reverse('-6.3°')}"],
         
-        ["  עלות השחר/צאת כוכבים דרת: במעלות"],
+        ["עלות השחר/צאת כוכבים דרת: במעלות"],
         [f"לפי 4 מיל של {reverse('18')} דקות: {reverse('-16.02°')}"],
         [f"לפי 4 מיל של {reverse('22.5')} דקות: {reverse('-19.75°')}"],
         [f"לפי 5 מיל של {reverse('24')} דקות: {reverse('-25.8°')}"],
@@ -1803,6 +1804,25 @@ halacha_watch_dir_path = user_data_dir(appname="halacha_watch", appauthor=False,
 os.makedirs(halacha_watch_dir_path, exist_ok=True)
 # שם ונתיב לקובץ ההגדרות של שעון ההלכה. חשוב מאוד לכל הקוד
 settings_file_path = os.path.join(halacha_watch_dir_path, "hw_settings.json")
+
+print("settings_file_path", settings_file_path)
+
+'''
+# פונקציות לטיפול במיקומים
+# פונקצייה שמחזירה את המיקום במחשב שבו שומרים את הקובץ של מיקום ברירת המחדל
+def get_settings_path():
+    
+    APP_NAME = "Halacha_watch"
+    
+    if platform.system() == "Windows":
+        base_dir = os.getenv("LOCALAPPDATA")
+    else:
+        base_dir = os.path.expanduser("~/.config")
+
+    config_dir = os.path.join(base_dir, APP_NAME)
+    os.makedirs(config_dir, exist_ok=True)
+    return os.path.join(config_dir, "hw_default_location_index.txt")
+'''
 
 # פונקצייה מאוד חשובה לטעינת כל ההגדרות של שעון ההלכה מתוך קובץ ההגדרות
 def load_settings_dict_from_file():
@@ -1862,16 +1882,39 @@ def go_to_default_location():
 go_to_default_location() # קריאה פעם אחת בתחילת הקוד 
 
 
-# פונקצייה להחלפת מיקום
+
+# פונקצייה להחלפת מיקום שעובדת בכל מערכת הפעלה
 def switch_location(event=None):
     global location, location_index
-    # event.keysym מיועד לאירועי מקלדת event.num מיועד לאירועי עכבר ו event.delta מיועד לגלילת עכבר בווינדוס
-    if event.keysym == "Right" or event.num in [3,4] or event.delta > 0: 
-        location_index = (location_index + 1) % len(locations)
-    elif event.keysym == "left" or event.num in [1,5] or event.delta < 0:
-        location_index = (location_index - 1) % len(locations)
 
-    location = locations[location_index]
+    # הגדרת כיוון ברירת מחדל (0 = אין שינוי)
+    direction = 0
+
+    # חיצים במקלדת
+    if hasattr(event, "keysym"):
+        if event.keysym.lower() == "down":
+            direction = 1     # חץ למטה -> קדימה
+        elif event.keysym.lower() == "up":
+            direction = -1    # חץ למעלה -> אחורה
+
+    # גלילת עכבר בלינוקס ובמקינטוש (1=שמאלי, 3=ימני, 4=גלילה למעלה, 5=גלילה למטה)
+    if hasattr(event, "num"):
+        if event.num in (3, 5):   # ימני או גלילה מטה
+            direction = 1
+        elif event.num in (1, 4): # שמאלי או גלילה מעלה
+            direction = -1
+
+    # גלילת עכבר בווינדוס (delta חיובי=למעלה, שלילי=למטה)
+    if hasattr(event, "delta"):
+        if event.delta < 0:
+            direction = 1   # גלילה מטה → קדימה
+        elif event.delta > 0:
+            direction = -1  # גלילה מעלה → אחורה
+
+    # שינוי המיקום לפי הכיוון
+    if direction != 0:
+        location_index = (location_index + direction) % len(locations)
+        location = locations[location_index]
 
 ###########################################################################################################3
 
@@ -1903,7 +1946,7 @@ modes_hebrew = {
 
 def edit_settings():
     edit_win = tk.Toplevel(root_hw)
-    edit_win.title("עריכת הגדרות")
+    edit_win.title(reverse("עריכת הגדרות"))
     edit_win.geometry("400x400")
     ttk.Label(edit_win, text=reverse("עריכת הגדרות"), font=("Arial", 14, "bold")).pack(pady=10)
     
@@ -1955,12 +1998,12 @@ def edit_settings():
         frame = ttk.Frame(edit_win)
         frame.pack(fill="x", padx=10, pady=5)
         ttk.Label(frame, text=names_hebrew.get(key, key), width=20).pack(side="right")
-        combo = ttk.Combobox(frame, values=options_to_edit.get(key, []))
+        combo = ttk.Combobox(frame, values=options_to_edit.get(key, []), state="readonly")
         combo.set(val)
         combo.pack(side="right", padx=5)
         entries[key] = combo
 
-    ttk.Button(edit_win, text="שמור", command=save_changes).pack(pady=20)
+    ttk.Button(edit_win, text=reverse("שמור הגדרות"), command=save_changes).pack(pady=20)
 
 # פונקציות הפעלה של התפריט
 def show_current_settings():
@@ -1969,17 +2012,14 @@ def show_current_settings():
         if key == "hesberim_mode":
             val = modes_hebrew.get(val, val)
         text += f"{names_hebrew.get(key, key)}: {val}\n"
-    messagebox.showinfo(reverse("הגדרות נוכחיות"), reverse(text))
+    messagebox.showinfo(reverse("הגדרות נוכחיות"), text)
 
 def show_about():
     messagebox.showinfo(
         reverse("אודות התוכנה"),
-        reverse(f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי שמחה גרשון בורר\nכוכבים וזמנים\nsgbmzm@gmail.com")
+        reverse(f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי ד''ר שמחה גרשון בורר\nכוכבים וזמנים\nsgbmzm@gmail.com")
     )
 
-def save_default_location_index():
-    # כאן תממש את הקוד שלך לשמירת המיקום
-    messagebox.showinfo(reverse("שמירה"), reverse("המיקום הנוכחי נשמר כברירת מחדל."))
 
 def show_popup_menu(event):
     
@@ -1999,15 +2039,13 @@ def show_popup_menu(event):
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
     
-root_hw.bind("<Escape>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על אסקייפ
+root_hw.bind("<Escape>", lambda e: root_hw.destroy()) # כיבוי בלחיצה על אסקייפ במקלדת
 root_hw.bind("<Button-2>", show_popup_menu) # הצגת תפריט בלחיצה על לחצן אמצעי בעכבר
+root_hw.bind("<Alt_L>", show_popup_menu) # הצגת תפריט בלחיצה על אלט שמאלי במקלדת
+root_hw.bind("<Alt_R>", show_popup_menu) # הצגת תפריט בלחיצה על אלט ימני במקלדת
 
-root_hw.bind("<Right>", switch_location) # חץ ימינה מחליף מיקום
-root_hw.bind("<Left>", switch_location) # חץ שמאלה מחליף מיקום
-#root_hw.bind("<Up>", go_to_default_location) # חץ למעלה מחזיר למיקום ברירת המחדל
-
-#root_hw.bind("<Button-1>", switch_location) # לחצן שמאלי בעכבר מחליף מיקום
-#root_hw.bind("<Button-3>", switch_location) # לחצן ימני בעכבר מחליף מיקום
+root_hw.bind("<Up>", switch_location) # חץ ימינה במקלדת מחליף מיקום
+root_hw.bind("<Down>", switch_location) # חץ שמאלה במקלדת מחליף מיקום
 
 # תמיכה גם בלינוקס וגם בווינדוס בגלילת העכבר
 root_hw.bind("<MouseWheel>", switch_location)      # Windows scroll up & down
@@ -2153,22 +2191,35 @@ def main_halach_clock():
           
         # tlight_deg קובע כמה מעלות תחת האופק ייחשב דמדומים ואם לא מוגדר אז לא מחושב
         # riset_deg קובע כמה מעלות תחת האופק ייחשב זריחה ושקיעה ואם לא מוגדר אז מחושב -0.833 
-        # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום אבל ממילא מוכרחים בסוף להגדיר riset.set_day(0) ואז יחושבו שוב
+        # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום.
         riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg=settings_dict["rise_set_deg"], tlight_deg= settings_dict["mga_deg"]) # lto=location_offset_hours ####
         
-        # הגדרת התאריך על היום הקודם ושמירת המידע הדרוש 
-        riset.set_day(-1)
-        yesterday_sunset, mga_yesterday_sunset = riset.sunset(1), riset.tend(1)
-        
-        # הגדרת התאריך על היום הבא ושמירת המידע הדרוש
-        riset.set_day(1)
-        tomorrow_sunrise, mga_tomorrow_sunrise  = riset.sunrise(1), riset.tstart(1)
-        
-        # החזרת הגדרת התאריך ליום הנוכחי ושמירת המידע הדרוש
-        # חייבים תמיד שהחזרה ליום הנוכחי תהיה האחרונה כדי שבסוף יישאר ריסט שמוגדר על התאריך הנוכחי
-        riset.set_day(0)
+        # איסוף הזמנים של היום הנוכחי שחושבו מיי בהגרת אובייקט ריסט
         sunrise, sunset, mga_sunrise, mga_sunset = riset.sunrise(1), riset.sunset(1), riset.tstart(1), riset.tend(1)
+        
+        # הגדרה מה זה אחרי השקיעה לפי אחת השיטות, ולפני 12 בלילה
+        is_after_sunset_before_midnight = (sunrise and sunset and current_timestamp > sunrise and current_timestamp >= sunset) or (mga_sunrise and mga_sunset and current_timestamp > mga_sunrise and current_timestamp >= mga_sunset)
+        
+        # אם מדובר אחרי השקיעה לפי אחת השיטות ולפני השעה 12 בלילה
+        # מגדירים את יום המחר ושומרים את כל הנתונים הדרושים עכשיו או בעתיד על יום המחר
+        # מהשקיעה ועד 12 בלילה הגדרת שעון שעה זמנית היא מהשקיעה של היום עד הזריחה של מחר. ושעון מהשקיעה הוא מהשקיעה של היום. לכן אין צורך לחשב את היום הקודם
+        if is_after_sunset_before_midnight:
+            riset.set_day(1)
+            tomorrow_sunrise, mga_tomorrow_sunrise  = riset.sunrise(1), riset.tstart(1)
+        # בכל מקרה אחר צריך את השקיעה של אתמול לשעון מהשקיעה האחרונה ואם זה לפני הזריחה אז גם עבור שעון שעה זמנית
+        else:
+            # הגדרת התאריך על היום הקודם ושמירת המידע הדרוש 
+            riset.set_day(-1)
+            yesterday_sunset, mga_yesterday_sunset = riset.sunset(1), riset.tend(1)
             
+        # החזרת הגדרת התאריך ליום הנוכחי
+        # !!!!! חייבים תמיד שהחזרה ליום הנוכחי תהיה האחרונה כדי שבסוף יישאר ריסט שמוגדר על התאריך הנוכחי !!!!!
+        riset.set_day(0, update_times=False) # מחזיר ליום הנוכחי - בלי לחשב שוב פעם זריחות ושקיעות.
+        
+        # עדכון המשתנים הגלובליים למיקום ולתאריך הנוכחי ולהפרש גריניץ הנוכחי ולריסט הנוכחי המוגדר כבר על היום הנוכחי
+        last_location_riset = riset
+        last_state_for_rise_set_calculation = current_state_for_rise_set_calculation
+        
         ##########################################################################
         # חישוב דמדומים נוספים עבור צאת הכוכבים או משיכיר את חבירו וכדומה באמצעות מופע מחלקה חדש
         # אני מנצל כאן את הגדרת גובה הזריחה והשקיעה וגובה הדמדומים ובמקום זה עושה את הגבהים המבוקשים עבורי
@@ -2178,10 +2229,6 @@ def main_halach_clock():
         riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg=settings_dict["hacochavim_deg"], tlight_deg=settings_dict["misheiacir_deg"])
         tset_hacochavim, misheiakir = riset1.sunset(1), riset1.tstart(1)
         ########################################################################
-        # עדכון המשתנים הגלובליים למיקום ולתאריך הנוכחי ולהפרש גריניץ הנוכחי ולריסט המוגדר על היום הנוכחי
-        last_location_riset = riset
-        last_state_for_rise_set_calculation = current_state_for_rise_set_calculation
-        ##########################################
         
    
     # בכל מקרה ריסט הוא הקודם שההיה בשימוש כדי לחסוך בחישובים מיותרים
