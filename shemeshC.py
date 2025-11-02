@@ -1788,8 +1788,8 @@ def get_current_location_timestamp(manual_time = False):
 
 ########################################################################################3
 
-# חיפוש מהיר של המיקום האינדקסי של ירושלים בתוך מערך המיקומים. אם לא קיים מחזיר אפס כאינדקס למיקום ברירת מחדל
-jerusalem_index = next((item for item, location in enumerate(locations) if location["heb_name"] == "ירושלים"), 0)
+# חיפוש אינדקס של "ירושלים" או החזרת 0 אם לא נמצא
+jerusalem_index = ([i for i, loc in enumerate(locations) if loc["heb_name"] == "ירושלים"] or [0])[0]
 
 settings_dict = {
     "rise_set_deg": -0.833, #-0.833 # מה גובה השמש בשעת זריחה ושקיעה. קובע לשעון שעה זמנית גרא ולהדפסת הזמנים
