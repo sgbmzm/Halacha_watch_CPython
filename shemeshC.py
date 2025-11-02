@@ -1327,7 +1327,7 @@ print(get_today_heb_date_string(heb_week_day=True))
 # ========================================================
 
 # משתנה גלובלי שמציין את גרסת התוכנה למעקב אחרי עדכונים
-VERSION = "C-02/11/2025"
+VERSION = "02/11/2025"
 
 ######################################################################################################################
 
@@ -1708,17 +1708,17 @@ locations = [
 # לדברים באנגלית ולמספרים חייבים לעשות רוורס כאן כדי שהרוורס הסופי שעושים אחר כך יישר אותם 
 hesberim = [
         
-        ["לחצן אמצעי בעכבר - פותח תפריט חשוב"],
-        [f"שעון ההלכה גרסה: {reverse(VERSION)}"],
+        ["אַלט / לחצן אמצעי בעכבר: פתיחת התפריט"],
+        ["החלפת מיקום: חיצים / גלילה"],
+        
+        [f"שעון ההלכה למחשב. גרסה: {reverse(VERSION)}"],
         [" מאת: שמחה גרשון בורר - כוכבים וזמנים"],
         [f'{reverse("sgbmzm@gmail.com")}'],
         ["כל הזכויות שמורות - להלן הסברים"],
         
-        ["החלפת מיקום: במקלדת - חיצים, בעכבר - גלילה"],
-        
         ["שורת זמנים מעוגלים בשעון רגיל - וכן שעונים כדלהלן"],
         ["גריניץ  |  מקומי  |  מקומי-ממוצע  |  זמן-מהשקיעה"],
-        ["שורת הסברים ומידע - שורה תחתונה"],
+        ["שורת הסברים ומידע: שורה תחתונה"],
         
         [f"כשהשעון מכוון: דיוק הזמנים {reverse('10')} שניות"],
         
@@ -1788,15 +1788,20 @@ def get_current_location_timestamp(manual_time = False):
 
 ########################################################################################3
 
+# חיפוש מהיר של המיקום האינדקסי של ירושלים בתוך מערך המיקומים. אם לא קיים מחזיר אפס כאינדקס למיקום ברירת מחדל
+jerusalem_index = next((item for item, location in enumerate(locations) if location["heb_name"] == "ירושלים"), 0)
+
 settings_dict = {
     "rise_set_deg": -0.833, #-0.833 # מה גובה השמש בשעת זריחה ושקיעה. קובע לשעון שעה זמנית גרא ולהדפסת הזמנים
     "mga_deg": -16, # מה גובה השמש בשעת עלות השחר וצאת הכוכבים דרת. קובע לשעון שעה זמנית מגא ולהדפסת הזמנים
     "hacochavim_deg": -4.61, # מה גובה השמש בשעת צאת הכוכבים לשיטת הגאונים. קובע להדפסת הזמנים
     "misheiacir_deg": -10.5, # מה גובה השמש בשעת משיכיר. קובע להדפסת הזמנים
     "hesberim_mode": "hesberim", # "hesberim" or "zmanim", or "clocks"
-    "default_location_index": 26, # מה מיקום ברירת המחדל שמוגדר. כרגע 26 זה ירושלים.
+    "default_location_index": jerusalem_index, # אינדקס מיקום ברירת המחדל בקובץ המיקומים. כרגע מוגדר ירושלים.
 }
 
+# יצירת עותק ששומר את ההגדרות היפולטיביות הנ"ל. כי ההגדרות הנל משתנות במהלך פעילות התוכנה
+default_settings_dict = dict(settings_dict)
 
 # נתיב לתיקיית הנתונים של קבצים הדרושים לתוכנה
 halacha_watch_dir_path = user_data_dir(appname="halacha_watch", appauthor=False, roaming=False)
@@ -1926,13 +1931,24 @@ root_hw.configure(bg='black') # רקע שחור
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+# פונקצייה להחזיר את קובץ ההגדרות השמור במחשב למצבו ההתחלתי
+def to_default_settings():
+    global settings_dict, default_settings_dict
+    # עדכון הגדרות ברירת מחדל בתוכנה עצמה בשעת פעולתה
+    settings_dict.update(default_settings_dict)
+    go_to_default_location() # החזרת התצוגה למיקום ברירת מחדל החדש
+    # שמירת כל ההגדרות המשוחזרות לקובץ JSON של ההגדרות
+    with open(settings_file_path, "w") as f:
+        ujson.dump(default_settings_dict, f)    
+        messagebox.showinfo(reverse("שיחזור הגדרות"), reverse("הגדרות ברירת מחדל שוחזרו בהצלחה!"))
+    
 
 # תיאורים בעברית
 names_hebrew = {
-    "rise_set_deg": reverse("שיטת זריחה ושקיעה"),
-    "mga_deg": reverse("שיטת מג\"א ועלות"),
-    "hacochavim_deg": reverse("שיטת כוכבים"),
-    "misheiacir_deg": reverse("שיטת משיכיר"),
+    "rise_set_deg": reverse("° שיטת זריחה ושקיעה"),
+    "mga_deg": reverse("° שיטת מג\"א ועלות"),
+    "hacochavim_deg": reverse("° שיטת צאת הכוכבים"),
+    "misheiacir_deg": reverse("° שיטת משיכיר"),
     "hesberim_mode": reverse("מצב תצוגה"),
 }
 
@@ -1947,8 +1963,7 @@ modes_hebrew = {
 def edit_settings():
     edit_win = tk.Toplevel(root_hw)
     edit_win.title(reverse("עריכת הגדרות"))
-    edit_win.geometry("400x400")
-    ttk.Label(edit_win, text=reverse("עריכת הגדרות"), font=("Arial", 14, "bold")).pack(pady=10)
+    ttk.Label(edit_win, text=reverse("עריכת הגדרות ושיטות זמנים"), font=("Arial", 14, "bold")).pack(pady=10)
     
     global settings_dict, settings_file_path  # נשתמש במשתנים הגלובליים
     
@@ -1957,7 +1972,7 @@ def edit_settings():
     "mga_deg": [-16, -19.75],
     "hacochavim_deg": [-4.61, -3.61, -6, -8.5],
     "misheiacir_deg": [-10.5, -10],
-    "hesberim_mode": ["hesberim", "zmanim", "clocks", "zmanim_with_clocks"],
+    #"hesberim_mode": ["hesberim", "zmanim", "clocks", "zmanim_with_clocks"], כרגע בשעון ההלכה למחשב אני לא מאפשר לשנות את זה כי יש שורת הסברים למטה
     }
 
     entries = {}
@@ -1982,9 +1997,7 @@ def edit_settings():
         with open(settings_file_path, "w") as f:
             ujson.dump(settings_dict, f)
             
-        messagebox.showinfo("נשמר", "ההגדרות נשמרו בהצלחה!")
-        
-        #load_settings_dict_from_file()
+        messagebox.showinfo(reverse("נשמר"), reverse("ההגדרות נשמרו בהצלחה!"))
         
         edit_win.destroy()
         ########################################
@@ -2011,13 +2024,16 @@ def show_current_settings():
     for key, val in settings_dict.items():
         if key == "hesberim_mode":
             val = modes_hebrew.get(val, val)
+        elif key == "default_location_index":
+            val = reverse(locations[val]["heb_name"])
+            key = reverse("מיקום ברירת מחדל")
         text += f"{names_hebrew.get(key, key)}: {val}\n"
     messagebox.showinfo(reverse("הגדרות נוכחיות"), text)
 
 def show_about():
     messagebox.showinfo(
         reverse("אודות התוכנה"),
-        reverse(f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי ד''ר שמחה גרשון בורר\nכוכבים וזמנים\nsgbmzm@gmail.com")
+        reverse(f"שעון ההלכה\n\nגרסה {reverse(VERSION)}\n\nפותח על ידי ד''ר שמחה גרשון בורר\nכוכבים וזמנים\n{reverse('sgbmzm@gmail.com')}")
     )
 
 
@@ -2031,8 +2047,10 @@ def show_popup_menu(event):
     popup_menu.add_command(label=reverse("חזרה למיקום ברירת מחדל"), command=go_to_default_location)
     popup_menu.add_command(label=reverse("הצג הגדרות נוכחיות"), command=show_current_settings)
     popup_menu.add_command(label=reverse("עריכת הגדרות"), command=edit_settings)
+    popup_menu.add_command(label=reverse("שחזר הגדרות ברירת מחדל"), command=to_default_settings)
     popup_menu.add_command(label=reverse("אודות התוכנה"), command=show_about)
     popup_menu.add_command(label=reverse("כיבוי התוכנה"), command=root_hw.destroy)
+    
     
     # הצגת התפריט במקום שבו לוחצים על המסך
     popup_menu.tk_popup(event.x_root, event.y_root)
