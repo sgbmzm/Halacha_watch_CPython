@@ -2212,23 +2212,18 @@ def main_halach_clock():
         # יצירת אובייקט RiSet # הקריאה הזו כבר מחשבת נתוני זריחות ושקיעות באותו יום.
         riset = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg=settings_dict["rise_set_deg"], tlight_deg= settings_dict["mga_deg"]) # lto=location_offset_hours ####
         
-        # איסוף הזמנים של היום הנוכחי שחושבו מיי בהגרת אובייקט ריסט
+        # איסוף הזמנים של היום הנוכחי שחושבו מייד בהגדרת אובייקט ריסט. הזמנים חשובים לשעון שעה זמנים של היום
         sunrise, sunset, mga_sunrise, mga_sunset = riset.sunrise(1), riset.sunset(1), riset.tstart(1), riset.tend(1)
         
-        # הגדרה מה זה אחרי השקיעה לפי אחת השיטות, ולפני 12 בלילה
-        is_after_sunset_before_midnight = (sunrise and sunset and current_timestamp > sunrise and current_timestamp >= sunset) or (mga_sunrise and mga_sunset and current_timestamp > mga_sunrise and current_timestamp >= mga_sunset)
-        
-        # אם מדובר אחרי השקיעה לפי אחת השיטות ולפני השעה 12 בלילה
-        # מגדירים את יום המחר ושומרים את כל הנתונים הדרושים עכשיו או בעתיד על יום המחר
-        # מהשקיעה ועד 12 בלילה הגדרת שעון שעה זמנית היא מהשקיעה של היום עד הזריחה של מחר. ושעון מהשקיעה הוא מהשקיעה של היום. לכן אין צורך לחשב את היום הקודם
-        if is_after_sunset_before_midnight:
-            riset.set_day(1)
-            tomorrow_sunrise, mga_tomorrow_sunrise  = riset.sunrise(1), riset.tstart(1)
-        # בכל מקרה אחר צריך את השקיעה של אתמול לשעון מהשקיעה האחרונה ואם זה לפני הזריחה אז גם עבור שעון שעה זמנית
-        else:
-            # הגדרת התאריך על היום הקודם ושמירת המידע הדרוש 
-            riset.set_day(-1)
-            yesterday_sunset, mga_yesterday_sunset = riset.sunset(1), riset.tend(1)
+        # מגדירים את יום האתמול ושומרים את כל הנתונים הדרושים עכשיו או בעתיד על יום האתמול 
+        # צריך את השקיעה של אתמול לשעון מהשקיעה האחרונה, ואם זה לפני אחרי 12 בלילה ולפני הזריחה אז גם עבור שעון שעה זמנית
+        riset.set_day(-1)
+        yesterday_sunset, mga_yesterday_sunset = riset.sunset(1), riset.tend(1)
+
+        # מגדירים את יום המחר ושומרים את כל הנתונים הדרושים עכשיו או בעתיד על יום המחר 
+        # צריך את הזריחות של מחר לשעון שעה זמנית של הלילה, החל מהשקיעה ועד 12 בלילה שאז מתחלף תאריך לועזי
+        riset.set_day(1)
+        tomorrow_sunrise, mga_tomorrow_sunrise  = riset.sunrise(1), riset.tstart(1)
             
         # החזרת הגדרת התאריך ליום הנוכחי
         # !!!!! חייבים תמיד שהחזרה ליום הנוכחי תהיה האחרונה כדי שבסוף יישאר ריסט שמוגדר על התאריך הנוכחי !!!!!
@@ -2243,7 +2238,7 @@ def main_halach_clock():
         # אני מנצל כאן את הגדרת גובה הזריחה והשקיעה וגובה הדמדומים ובמקום זה עושה את הגבהים המבוקשים עבורי
         # בכל מופע כזה אפשר לחשב 2 זמנים שלכל אחד מהם יש התחלה וסוף - וההתחלה זה זריחה והסוף זה שקיעה
         # אם השמש לא מגיעה לגובה המבוקש בתאריך ובמיקום המבוקש - זה מחזיר None
-        # כאן לא צריך לחשב עבור היום הקודם אלא זה מידע ליממה הנוכחית. לכן לא צריך להגדיר riset1.set_day(0) כי זה קורה לבד
+        # כאן לא צריך לחשב עבור היום הקודם אלא זה מידע ליממה הנוכחית
         riset1 = RiSet(lat=location["lat"], long=location["long"], lto=location_offset_hours, riset_deg=settings_dict["hacochavim_deg"], tlight_deg=settings_dict["misheiacir_deg"])
         tset_hacochavim, misheiakir = riset1.sunset(1), riset1.tstart(1)
         ########################################################################
@@ -2260,22 +2255,29 @@ def main_halach_clock():
     # לדעת את גובה השמש והירח אפשר גם במיקום שאין בו זריחות ושקיאות וזה לא מחזיר שגיאה אלא מחזיר None שזה כמו אפס
     s_alt, s_az, s_ra, s_dec = riset.alt_az_ra_dec(current_hour, sun=True)
     m_alt, m_az, m_ra, m_dec = riset.alt_az_ra_dec(current_hour, sun=False)
-       
+    
+    print(sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise)
+      
     # הדפסות לניסיון כשיש בעיות
+    #@@@@@@@@@@@@@@@@@@ יש בעיה כי time.gmtime(None) מחזיר את הזמן של עכשיו כחותמת זמן - במקום שיחזיר שגיאה @@@@@@@@@@@@@@@@@@@@@@@@
     print_times = False
     if print_times:
-        print("sunrise",format_time(time.gmtime(sunrise), with_date=True))
-        print("sunset", format_time(time.gmtime(sunset), with_date=True))
-        print("mga_sunrise",format_time(time.gmtime(mga_sunrise), with_date=True))
-        print("mga_sunset", format_time(time.gmtime(mga_sunset), with_date=True))
-        print("misheiakir",format_time(time.gmtime(misheiakir), with_date=True))
-        print("tset_hacochavim", format_time(time.gmtime(tset_hacochavim), with_date=True))
+        print("sunrise", sunrise, format_time(time.gmtime(sunrise), with_date=True))
+        print("sunset", sunset, format_time(time.gmtime(sunset), with_date=True))
+        print("mga_sunrise", mga_sunrise, format_time(time.gmtime(mga_sunrise), with_date=True))
+        print("mga_sunset", mga_sunset, format_time(time.gmtime(mga_sunset), with_date=True))
+        print("misheiakir", misheiakir, format_time(time.gmtime(misheiakir), with_date=True))
+        print("tset_hacochavim", tset_hacochavim, format_time(time.gmtime(tset_hacochavim), with_date=True))
+        print("yesterday_sunset",yesterday_sunset, format_time(time.gmtime(yesterday_sunset), with_date=True))
+        print("mga_yesterday_sunset", mga_yesterday_sunset, format_time(time.gmtime(mga_yesterday_sunset), with_date=True))
+        print("tomorrow_sunrise", tomorrow_sunrise, format_time(time.gmtime(tomorrow_sunrise), with_date=True))
+        print("mga_tomorrow_sunrise", mga_tomorrow_sunrise, format_time(time.gmtime(mga_tomorrow_sunrise), with_date=True))
         print("")
         
     ################## חישוב השעה הזמנית הנוכחית גרא ומגא  ##################
       
     # כל החישובים נעשים רק אם יש זריחה ושקיעה ביממה זו במיקום זה והזריחה היא לפני השקיעה. כי אולי במיקום הזה אין בכלל זריחה ושקיעה ביום זה
-    if sunrise and sunset and sunrise < sunset:
+    if sunrise and sunset and sunrise < sunset and yesterday_sunset and tomorrow_sunrise:
         
         # חישוב מה הם הזריחה והשקיעה הקובעים את השעון של שעה זמנית באמצעות פונקצייה שהוגדרה למעלה    
         sunrise_timestamp, sunset_timestamp = get_sunrise_sunset_timestamps(current_timestamp, is_gra = True)
@@ -2292,7 +2294,7 @@ def main_halach_clock():
        
     # כל החישובים נעשים רק אם יש זריחה ושקיעה של מגא ביממה זו במיקום זה והזריחה היא לפני השקיעה.
     # כי אולי במיקום הזה אין בכלל זריחה ושקיעה ביום זה כלומר שהשמש לא יורדת אל מתחת האופק בצורה מסודרת ביממה זו
-    if mga_sunrise and mga_sunset and mga_sunrise < mga_sunset:
+    if mga_sunrise and mga_sunset and mga_sunrise < mga_sunset and mga_yesterday_sunset and mga_tomorrow_sunrise:
 
         # חישוב מחדש עבור שיטת מגן אברהם    
         # חישוב מה הם הזריחה והשקיעה הקובעים את השעון של שעה זמנית באמצעות פונקצייה שהוגדרה למעלה    
