@@ -2255,8 +2255,6 @@ def main_halach_clock():
     # לדעת את גובה השמש והירח אפשר גם במיקום שאין בו זריחות ושקיאות וזה לא מחזיר שגיאה אלא מחזיר None שזה כמו אפס
     s_alt, s_az, s_ra, s_dec = riset.alt_az_ra_dec(current_hour, sun=True)
     m_alt, m_az, m_ra, m_dec = riset.alt_az_ra_dec(current_hour, sun=False)
-    
-    print(sunrise, sunset, mga_sunrise, mga_sunset, yesterday_sunset, mga_yesterday_sunset, tomorrow_sunrise, mga_tomorrow_sunrise)
       
     # הדפסות לניסיון כשיש בעיות
     #@@@@@@@@@@@@@@@@@@ יש בעיה כי time.gmtime(None) מחזיר את הזמן של עכשיו כחותמת זמן - במקום שיחזיר שגיאה @@@@@@@@@@@@@@@@@@@@@@@@
